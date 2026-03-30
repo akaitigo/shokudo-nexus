@@ -26,12 +26,16 @@ const (
 // FoodInventoryService はFoodInventoryServiceのgRPC実装。
 type FoodInventoryService struct {
 	pb.UnimplementedFoodInventoryServiceServer
-	repo *repository.FoodItemRepository
+	repo    repository.FoodItemStore
+	nowFunc func() time.Time
 }
 
 // NewFoodInventoryService は新しいFoodInventoryServiceを生成する。
-func NewFoodInventoryService(repo *repository.FoodItemRepository) *FoodInventoryService {
-	return &FoodInventoryService{repo: repo}
+func NewFoodInventoryService(repo repository.FoodItemStore) *FoodInventoryService {
+	return &FoodInventoryService{
+		repo:    repo,
+		nowFunc: func() time.Time { return time.Now().UTC() },
+	}
 }
 
 // CreateFoodItem は余剰食品を登録する。
@@ -45,7 +49,7 @@ func (s *FoodInventoryService) CreateFoodItem(ctx context.Context, req *pb.Creat
 		return nil, status.Errorf(codes.InvalidArgument, "invalid expiry_date format, expected RFC3339: %v", err)
 	}
 
-	now := time.Now().UTC()
+	now := s.nowFunc()
 	item := &domain.FoodItem{
 		Name:       req.GetName(),
 		Category:   req.GetCategory(),
@@ -80,7 +84,7 @@ func (s *FoodInventoryService) GetFoodItem(ctx context.Context, req *pb.GetFoodI
 	}
 
 	// 消費期限チェック（オンザフライ）
-	now := time.Now().UTC()
+	now := s.nowFunc()
 	if item.Status == domain.FoodItemStatusAvailable && item.IsExpired(now) {
 		item.Status = domain.FoodItemStatusExpired
 		item.UpdatedAt = now
@@ -118,7 +122,7 @@ func (s *FoodInventoryService) ListFoodItems(ctx context.Context, req *pb.ListFo
 	}
 
 	// 消費期限チェック（オンザフライ）
-	now := time.Now().UTC()
+	now := s.nowFunc()
 	pbItems := make([]*pb.FoodItem, 0, len(result.Items))
 	for _, item := range result.Items {
 		if item.Status == domain.FoodItemStatusAvailable && item.IsExpired(now) {
