@@ -16,12 +16,12 @@ import (
 // FusionService はFusionServiceのgRPC実装。
 type FusionService struct {
 	pb.UnimplementedFusionServiceServer
-	fusionRepo   *repository.FusionRequestRepository
-	foodItemRepo *repository.FoodItemRepository
+	fusionRepo   repository.FusionRequestStore
+	foodItemRepo repository.FoodItemStore
 }
 
 // NewFusionService は新しいFusionServiceを生成する。
-func NewFusionService(fusionRepo *repository.FusionRequestRepository, foodItemRepo *repository.FoodItemRepository) *FusionService {
+func NewFusionService(fusionRepo repository.FusionRequestStore, foodItemRepo repository.FoodItemStore) *FusionService {
 	return &FusionService{
 		fusionRepo:   fusionRepo,
 		foodItemRepo: foodItemRepo,
