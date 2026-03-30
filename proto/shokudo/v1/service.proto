@@ -9,9 +9,6 @@ syntax = "proto3";
 // 食堂ネクサスサービスのパッケージ。
 package shokudo.v1;
 
-// ヘルスチェック用。
-import "google/protobuf/empty.proto";
-
 // 食品在庫管理サービス。余剰食品の登録・検索・管理を行う。
 service FoodInventoryService {
   // 余剰食品を登録する。
@@ -24,7 +21,7 @@ service FoodInventoryService {
   rpc ListFoodItems(ListFoodItemsRequest) returns (ListFoodItemsResponse);
 
   // 食品を削除する。
-  rpc DeleteFoodItem(DeleteFoodItemRequest) returns (google.protobuf.Empty);
+  rpc DeleteFoodItem(DeleteFoodItemRequest) returns (DeleteFoodItemResponse);
 }
 
 // 拠点間融通サービス。食堂間の食材リクエスト・マッチングを行う。
@@ -98,6 +95,9 @@ message DeleteFoodItemRequest {
   // 削除する食品のID。必須。
   string id = 1;
 }
+
+// DeleteFoodItem のレスポンス。
+message DeleteFoodItemResponse {}
 
 // CreateFusionRequest のリクエスト。
 message CreateFusionRequestRequest {
