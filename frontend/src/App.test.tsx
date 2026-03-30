@@ -12,4 +12,12 @@ describe("App", () => {
 		render(<App />);
 		expect(screen.getByText("余剰食品と子ども食堂のマッチングプラットフォーム")).toBeDefined();
 	});
+
+	it("renders navigation links", () => {
+		render(<App />);
+		expect(screen.getByRole("link", { name: "食品登録" })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "在庫一覧" })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "融通リクエスト" })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "融通一覧" })).toBeInTheDocument();
+	});
 });
