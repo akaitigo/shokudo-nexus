@@ -44,3 +44,4 @@ gen/
 
 # Build
 *.log
+backend/shokudo-nexus
