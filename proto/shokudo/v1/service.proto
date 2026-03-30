@@ -1,0 +1,206 @@
+// =============================================================================
+// shokudo-nexus gRPC サービス定義
+//
+// 余剰食品と子ども食堂のマッチングサービス。
+// =============================================================================
+
+syntax = "proto3";
+
+// 食堂ネクサスサービスのパッケージ。
+package shokudo.v1;
+
+// ヘルスチェック用。
+import "google/protobuf/empty.proto";
+
+// 食品在庫管理サービス。余剰食品の登録・検索・管理を行う。
+service FoodInventoryService {
+  // 余剰食品を登録する。
+  rpc CreateFoodItem(CreateFoodItemRequest) returns (CreateFoodItemResponse);
+
+  // 指定されたIDの食品を取得する。
+  rpc GetFoodItem(GetFoodItemRequest) returns (GetFoodItemResponse);
+
+  // 食品の一覧を取得する。ページネーション対応。
+  rpc ListFoodItems(ListFoodItemsRequest) returns (ListFoodItemsResponse);
+
+  // 食品を削除する。
+  rpc DeleteFoodItem(DeleteFoodItemRequest) returns (google.protobuf.Empty);
+}
+
+// 拠点間融通サービス。食堂間の食材リクエスト・マッチングを行う。
+service FusionService {
+  // 食材融通リクエストを作成する。
+  rpc CreateFusionRequest(CreateFusionRequestRequest) returns (CreateFusionRequestResponse);
+
+  // 融通リクエストの一覧を取得する。
+  rpc ListFusionRequests(ListFusionRequestsRequest) returns (ListFusionRequestsResponse);
+
+  // 融通リクエストに応答する（承認/拒否）。
+  rpc RespondToFusionRequest(RespondToFusionRequestRequest) returns (RespondToFusionRequestResponse);
+}
+
+// CreateFoodItem のリクエスト。
+message CreateFoodItemRequest {
+  // 食品名。必須。空文字は INVALID_ARGUMENT を返す。
+  string name = 1;
+  // 食品カテゴリ（野菜、肉、魚、乳製品、穀物、その他）。
+  string category = 2;
+  // 消費期限（RFC 3339形式）。必須。
+  string expiry_date = 3;
+  // 数量。
+  int32 quantity = 4;
+  // 数量の単位（kg, 個, パック等）。
+  string unit = 5;
+  // 提供元の食堂/ドナーID。
+  string donor_id = 6;
+}
+
+// CreateFoodItem のレスポンス。
+message CreateFoodItemResponse {
+  // 作成された食品アイテム。
+  FoodItem food_item = 1;
+}
+
+// GetFoodItem のリクエスト。
+message GetFoodItemRequest {
+  // 取得する食品のID。必須。
+  string id = 1;
+}
+
+// GetFoodItem のレスポンス。
+message GetFoodItemResponse {
+  // 取得された食品アイテム。
+  FoodItem food_item = 1;
+}
+
+// ListFoodItems のリクエスト。
+message ListFoodItemsRequest {
+  // 1ページあたりの最大件数。デフォルト: 20, 最大: 100。
+  int32 page_size = 1;
+  // 次ページトークン。
+  string page_token = 2;
+  // カテゴリでフィルタ（任意）。
+  string category_filter = 3;
+}
+
+// ListFoodItems のレスポンス。
+message ListFoodItemsResponse {
+  // 食品アイテムの一覧。
+  repeated FoodItem food_items = 1;
+  // 次ページトークン。空の場合は最終ページ。
+  string next_page_token = 2;
+  // 全件数。
+  int32 total_count = 3;
+}
+
+// DeleteFoodItem のリクエスト。
+message DeleteFoodItemRequest {
+  // 削除する食品のID。必須。
+  string id = 1;
+}
+
+// CreateFusionRequest のリクエスト。
+message CreateFusionRequestRequest {
+  // リクエスト元の食堂ID。必須。
+  string requester_shokudo_id = 1;
+  // 希望する食品カテゴリ。
+  string desired_category = 2;
+  // 希望する数量。
+  int32 desired_quantity = 3;
+  // 数量の単位。
+  string unit = 4;
+  // メッセージ（任意）。
+  string message = 5;
+}
+
+// CreateFusionRequest のレスポンス。
+message CreateFusionRequestResponse {
+  // 作成された融通リクエスト。
+  FusionRequest fusion_request = 1;
+}
+
+// ListFusionRequests のリクエスト。
+message ListFusionRequestsRequest {
+  // 1ページあたりの最大件数。
+  int32 page_size = 1;
+  // 次ページトークン。
+  string page_token = 2;
+  // ステータスでフィルタ（任意）。
+  string status_filter = 3;
+}
+
+// ListFusionRequests のレスポンス。
+message ListFusionRequestsResponse {
+  // 融通リクエストの一覧。
+  repeated FusionRequest fusion_requests = 1;
+  // 次ページトークン。
+  string next_page_token = 2;
+  // 全件数。
+  int32 total_count = 3;
+}
+
+// RespondToFusionRequest のリクエスト。
+message RespondToFusionRequestRequest {
+  // 融通リクエストのID。必須。
+  string fusion_request_id = 1;
+  // 応答（APPROVED or REJECTED）。
+  string response = 2;
+  // 提供する食品アイテムID（承認時）。
+  string food_item_id = 3;
+}
+
+// RespondToFusionRequest のレスポンス。
+message RespondToFusionRequestResponse {
+  // 更新された融通リクエスト。
+  FusionRequest fusion_request = 1;
+}
+
+// 食品アイテムのドメインモデル。
+message FoodItem {
+  // 食品の一意識別子。
+  string id = 1;
+  // 食品名。
+  string name = 2;
+  // 食品カテゴリ。
+  string category = 3;
+  // 消費期限（RFC 3339形式）。
+  string expiry_date = 4;
+  // 数量。
+  int32 quantity = 5;
+  // 数量の単位。
+  string unit = 6;
+  // 提供元ID。
+  string donor_id = 7;
+  // ステータス（available, reserved, consumed, expired）。
+  string status = 8;
+  // 作成日時（RFC 3339形式）。
+  string created_at = 9;
+  // 更新日時（RFC 3339形式）。
+  string updated_at = 10;
+}
+
+// 融通リクエストのドメインモデル。
+message FusionRequest {
+  // リクエストの一意識別子。
+  string id = 1;
+  // リクエスト元の食堂ID。
+  string requester_shokudo_id = 2;
+  // 希望する食品カテゴリ。
+  string desired_category = 3;
+  // 希望する数量。
+  int32 desired_quantity = 4;
+  // 数量の単位。
+  string unit = 5;
+  // メッセージ。
+  string message = 6;
+  // ステータス（pending, approved, rejected, completed）。
+  string status = 7;
+  // 応答者の食堂ID（承認時）。
+  string responder_shokudo_id = 8;
+  // 提供される食品アイテムID（承認時）。
+  string food_item_id = 9;
+  // 作成日時（RFC 3339形式）。
+  string created_at = 10;
+  // 更新日時（RFC 3339形式）。
+  string updated_at = 11;
+}
