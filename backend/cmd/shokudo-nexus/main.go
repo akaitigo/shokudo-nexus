@@ -46,11 +46,11 @@ func main() {
 	// Repositories
 	foodItemRepo := repository.NewFoodItemRepository(fsClient)
 	fusionRequestRepo := repository.NewFusionRequestRepository(fsClient)
-	donationRecordRepo := repository.NewDonationRecordRepository(fsClient)
+	_ = repository.NewDonationRecordRepository(fsClient) // Phase 2: CompleteFusionRequest で使用予定
 
 	// Services
 	foodInventorySvc := service.NewFoodInventoryService(foodItemRepo)
-	fusionSvc := service.NewFusionService(fusionRequestRepo, foodItemRepo, donationRecordRepo)
+	fusionSvc := service.NewFusionService(fusionRequestRepo, foodItemRepo)
 
 	pb.RegisterFoodInventoryServiceServer(s, foodInventorySvc)
 	pb.RegisterFusionServiceServer(s, fusionSvc)
