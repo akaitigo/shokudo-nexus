@@ -129,6 +129,28 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 				"food item status is %q, must be %q to approve",
 				foodItem.Status, domain.FoodItemStatusAvailable)
 		}
+
+		// カテゴリ整合性チェック
+		if foodItem.Category != fusionReq.DesiredCategory {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"food item category %q does not match desired category %q",
+				foodItem.Category, fusionReq.DesiredCategory)
+		}
+
+		// 単位整合性チェック
+		if foodItem.Unit != fusionReq.Unit {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"food item unit %q does not match desired unit %q",
+				foodItem.Unit, fusionReq.Unit)
+		}
+
+		// 数量充足チェック
+		if foodItem.Quantity < fusionReq.DesiredQuantity {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"food item quantity %d is less than desired quantity %d",
+				foodItem.Quantity, fusionReq.DesiredQuantity)
+		}
+
 		foodItem.Status = domain.FoodItemStatusReserved
 		foodItem.UpdatedAt = now
 		if updateErr := s.foodItemRepo.Update(ctx, foodItem); updateErr != nil {
