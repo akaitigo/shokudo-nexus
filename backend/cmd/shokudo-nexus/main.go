@@ -46,10 +46,11 @@ func main() {
 	// Repositories
 	foodItemRepo := repository.NewFoodItemRepository(fsClient)
 	fusionRequestRepo := repository.NewFusionRequestRepository(fsClient)
+	donationRecordRepo := repository.NewDonationRecordRepository(fsClient)
 
 	// Services
 	foodInventorySvc := service.NewFoodInventoryService(foodItemRepo)
-	fusionSvc := service.NewFusionService(fusionRequestRepo, foodItemRepo)
+	fusionSvc := service.NewFusionService(fusionRequestRepo, foodItemRepo, donationRecordRepo)
 
 	pb.RegisterFoodInventoryServiceServer(s, foodInventorySvc)
 	pb.RegisterFusionServiceServer(s, fusionSvc)
