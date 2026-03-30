@@ -18,13 +18,15 @@ type FusionService struct {
 	pb.UnimplementedFusionServiceServer
 	fusionRepo   repository.FusionRequestStore
 	foodItemRepo repository.FoodItemStore
+	donationRepo repository.DonationRecordStore
 }
 
 // NewFusionService は新しいFusionServiceを生成する。
-func NewFusionService(fusionRepo repository.FusionRequestStore, foodItemRepo repository.FoodItemStore) *FusionService {
+func NewFusionService(fusionRepo repository.FusionRequestStore, foodItemRepo repository.FoodItemStore, donationRepo repository.DonationRecordStore) *FusionService {
 	return &FusionService{
 		fusionRepo:   fusionRepo,
 		foodItemRepo: foodItemRepo,
+		donationRepo: donationRepo,
 	}
 }
 
@@ -146,6 +148,65 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 	}
 
 	return &pb.RespondToFusionRequestResponse{
+		FusionRequest: domainFusionRequestToProto(fusionReq),
+	}, nil
+}
+
+// CompleteFusionRequest は融通リクエストを完了する（approved → completed）。
+// FoodItem のステータスを consumed に変更し、DonationRecord を作成する。
+func (s *FusionService) CompleteFusionRequest(ctx context.Context, req *pb.CompleteFusionRequestRequest) (*pb.CompleteFusionRequestResponse, error) {
+	if req.GetFusionRequestId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "fusion_request_id is required")
+	}
+
+	fusionReq, err := s.fusionRepo.Get(ctx, req.GetFusionRequestId())
+	if err != nil {
+		return nil, err
+	}
+
+	// ステータス遷移バリデーション: approved からのみ完了可能
+	if fusionReq.Status != domain.FusionRequestStatusApproved {
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"fusion request status is %q, only %q can be completed",
+			fusionReq.Status, domain.FusionRequestStatusApproved)
+	}
+
+	// FoodItem のステータスを consumed に変更
+	foodItem, foodErr := s.foodItemRepo.Get(ctx, fusionReq.FoodItemID)
+	if foodErr != nil {
+		return nil, foodErr
+	}
+
+	now := time.Now().UTC()
+	foodItem.Status = domain.FoodItemStatusConsumed
+	foodItem.UpdatedAt = now
+	if updateErr := s.foodItemRepo.Update(ctx, foodItem); updateErr != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update food item status: %v", updateErr)
+	}
+
+	// DonationRecord を作成
+	donationRecord := &domain.DonationRecord{
+		FoodItemID:      fusionReq.FoodItemID,
+		DonorID:         foodItem.DonorID,
+		RecipientID:     fusionReq.RequesterShokudoID,
+		FusionRequestID: fusionReq.ID,
+		Category:        foodItem.Category,
+		Quantity:        foodItem.Quantity,
+		Unit:            foodItem.Unit,
+		CreatedAt:       now,
+	}
+	if _, createErr := s.donationRepo.Create(ctx, donationRecord); createErr != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create donation record: %v", createErr)
+	}
+
+	// FusionRequest を completed に更新
+	fusionReq.Status = domain.FusionRequestStatusCompleted
+	fusionReq.UpdatedAt = now
+	if updateErr := s.fusionRepo.Update(ctx, fusionReq); updateErr != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update fusion request: %v", updateErr)
+	}
+
+	return &pb.CompleteFusionRequestResponse{
 		FusionRequest: domainFusionRequestToProto(fusionReq),
 	}, nil
 }
