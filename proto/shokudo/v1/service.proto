@@ -37,6 +37,9 @@ service FusionService {
 
   // 融通リクエストに応答する（承認/拒否）。
   rpc RespondToFusionRequest(RespondToFusionRequestRequest) returns (RespondToFusionRequestResponse);
+
+  // 融通リクエストを完了する（承認済み→完了への遷移）。
+  rpc CompleteFusionRequest(CompleteFusionRequestRequest) returns (CompleteFusionRequestResponse);
 }
 
 // CreateFoodItem のリクエスト。
@@ -154,6 +157,18 @@ message RespondToFusionRequestRequest {
 
 // RespondToFusionRequest のレスポンス。
 message RespondToFusionRequestResponse {
+  // 更新された融通リクエスト。
+  FusionRequest fusion_request = 1;
+}
+
+// CompleteFusionRequest のリクエスト。
+message CompleteFusionRequestRequest {
+  // 融通リクエストのID。必須。
+  string fusion_request_id = 1;
+}
+
+// CompleteFusionRequest のレスポンス。
+message CompleteFusionRequestResponse {
   // 更新された融通リクエスト。
   FusionRequest fusion_request = 1;
 }

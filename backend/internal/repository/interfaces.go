@@ -23,3 +23,8 @@ type FusionRequestStore interface {
 	List(ctx context.Context, params FusionListParams) (*FusionListResult, error)
 	Update(ctx context.Context, req *domain.FusionRequest) error
 }
+
+// DonationRecordStore は寄付履歴のデータアクセスインターフェース。
+type DonationRecordStore interface {
+	Create(ctx context.Context, record *domain.DonationRecord) (*domain.DonationRecord, error)
+}
