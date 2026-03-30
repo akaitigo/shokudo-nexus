@@ -123,6 +123,7 @@ type mockFusionRequestStore struct {
 	getFunc    func(ctx context.Context, id string) (*domain.FusionRequest, error)
 	listFunc   func(ctx context.Context, params repository.FusionListParams) (*repository.FusionListResult, error)
 	updateFunc func(ctx context.Context, req *domain.FusionRequest) error
+	updateErr  error // Set to force Update() to return an error
 
 	updateCalls int
 }
@@ -175,6 +176,9 @@ func (m *mockFusionRequestStore) List(ctx context.Context, params repository.Fus
 }
 
 func (m *mockFusionRequestStore) Update(ctx context.Context, req *domain.FusionRequest) error {
+	if m.updateErr != nil {
+		return m.updateErr
+	}
 	if m.updateFunc != nil {
 		return m.updateFunc(ctx, req)
 	}

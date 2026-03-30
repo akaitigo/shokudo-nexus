@@ -117,10 +117,13 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 	now := time.Now().UTC()
 	fusionReq.UpdatedAt = now
 
+	var foodItem *domain.FoodItem // ロールバック用にスコープを関数レベルに引き上げ
+
 	switch req.GetResponse() {
 	case "APPROVED":
 		// 承認時: FoodItem のステータスを reserved に変更
-		foodItem, foodErr := s.foodItemRepo.Get(ctx, req.GetFoodItemId())
+		var foodErr error
+		foodItem, foodErr = s.foodItemRepo.Get(ctx, req.GetFoodItemId())
 		if foodErr != nil {
 			return nil, foodErr
 		}
@@ -164,6 +167,12 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 	}
 
 	if updateErr := s.fusionRepo.Update(ctx, fusionReq); updateErr != nil {
+		// Rollback: food item が reserved に更新済みの場合、available に戻す
+		if req.GetResponse() == "APPROVED" && foodItem != nil {
+			foodItem.Status = domain.FoodItemStatusAvailable
+			foodItem.UpdatedAt = now
+			_ = s.foodItemRepo.Update(ctx, foodItem) // best-effort rollback
+		}
 		return nil, status.Errorf(codes.Internal, "failed to update fusion request: %v", updateErr)
 	}
 

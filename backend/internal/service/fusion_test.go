@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -218,11 +219,11 @@ func TestDomainFusionRequestToProto(t *testing.T) {
 
 func TestRespondToFusionRequest_ApprovalValidation(t *testing.T) {
 	tests := []struct {
-		name        string
-		fusionReq   *domain.FusionRequest
-		foodItem    *domain.FoodItem
-		wantCode    codes.Code
-		wantMsg     string
+		name      string
+		fusionReq *domain.FusionRequest
+		foodItem  *domain.FoodItem
+		wantCode  codes.Code
+		wantMsg   string
 	}{
 		{
 			name: "category mismatch rejects approval",
@@ -352,7 +353,6 @@ func TestRespondToFusionRequest_ApprovalSuccess(t *testing.T) {
 		Response:        "APPROVED",
 		FoodItemId:      foodItem.ID,
 	})
-
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -365,5 +365,47 @@ func TestRespondToFusionRequest_ApprovalSuccess(t *testing.T) {
 	if item.Status != domain.FoodItemStatusReserved {
 		t.Errorf("expected food item status %q, got %q",
 			domain.FoodItemStatusReserved, item.Status)
+	}
+}
+
+func TestRespondToFusionRequest_FusionUpdateFailRollbacksFoodItem(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	foodStore := newMockFoodItemStore()
+
+	fusionReq := &domain.FusionRequest{
+		ID:              "req-rollback",
+		DesiredCategory: "野菜",
+		DesiredQuantity: 3,
+		Unit:            "kg",
+		Status:          domain.FusionRequestStatusPending,
+	}
+	foodItem := &domain.FoodItem{
+		ID:       "food-rollback",
+		Category: "野菜",
+		Quantity: 5,
+		Unit:     "kg",
+		Status:   domain.FoodItemStatusAvailable,
+	}
+	fusionStore.requests[fusionReq.ID] = fusionReq
+	foodStore.items[foodItem.ID] = foodItem
+
+	// fusionRepo.Update を強制失敗させる
+	fusionStore.updateErr = fmt.Errorf("simulated update failure")
+
+	svc := NewFusionService(fusionStore, foodStore)
+	_, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
+		FusionRequestId: fusionReq.ID,
+		Response:        "APPROVED",
+		FoodItemId:      foodItem.ID,
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// FoodItem が available にロールバックされていること
+	item, _ := foodStore.Get(context.Background(), foodItem.ID)
+	if item.Status != domain.FoodItemStatusAvailable {
+		t.Errorf("expected food item rolled back to %q, got %q",
+			domain.FoodItemStatusAvailable, item.Status)
 	}
 }
