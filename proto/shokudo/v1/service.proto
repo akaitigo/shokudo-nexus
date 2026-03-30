@@ -9,6 +9,9 @@ syntax = "proto3";
 // 食堂ネクサスサービスのパッケージ。
 package shokudo.v1;
 
+// Go パッケージパス。
+option go_package = "github.com/akaitigo/shokudo-nexus/backend/gen/shokudo/v1;shokudov1";
+
 // 食品在庫管理サービス。余剰食品の登録・検索・管理を行う。
 service FoodInventoryService {
   // 余剰食品を登録する。
