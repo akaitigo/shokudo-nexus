@@ -1,10 +1,10 @@
-import { useFoodItems } from "@/hooks/useFoodItems";
-import { FOOD_CATEGORIES } from "@/types/domain";
-import type { FoodCategory, FoodItem } from "@/types/domain";
-import { getExpiryLevel } from "@/types/validation";
-import type { ExpiryLevel } from "@/types/validation";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useFoodItems } from "@/hooks/useFoodItems";
+import type { FoodCategory, FoodItem } from "@/types/domain";
+import { FOOD_CATEGORIES } from "@/types/domain";
+import type { ExpiryLevel } from "@/types/validation";
+import { getExpiryLevel } from "@/types/validation";
 
 function expiryBadgeClass(level: ExpiryLevel): string {
 	switch (level) {

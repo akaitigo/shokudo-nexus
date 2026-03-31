@@ -1,7 +1,7 @@
-import { useFusionRequests } from "@/hooks/useFusionRequests";
-import type { FusionRequest, FusionRequestStatus } from "@/types/domain";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useFusionRequests } from "@/hooks/useFusionRequests";
+import type { FusionRequest, FusionRequestStatus } from "@/types/domain";
 
 const STATUS_LABELS: Record<FusionRequestStatus, string> = {
 	pending: "承認待ち",

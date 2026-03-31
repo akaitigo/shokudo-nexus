@@ -1,16 +1,15 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
-		"useIgnoreFile": true
+		"useIgnoreFile": true,
+		"root": ".."
 	},
 	"files": {
-		"ignore": ["src/gen/**"]
+		"includes": ["**", "!**/src/gen"]
 	},
-	"organizeImports": {
-		"enabled": true
-	},
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
@@ -65,9 +64,9 @@
 				"useTemplate": "error"
 			},
 			"suspicious": {
-				"noConsoleLog": "warn",
 				"noExplicitAny": "error",
-				"noSkippedTests": "warn"
+				"noSkippedTests": "warn",
+				"noConsole": "warn"
 			},
 			"nursery": {
 				"useSortedClasses": "warn"
@@ -76,7 +75,7 @@
 	},
 	"overrides": [
 		{
-			"include": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+			"includes": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
 			"linter": {
 				"rules": {
 					"suspicious": {
