@@ -7,8 +7,8 @@ import (
 
 func TestDefaultPort(t *testing.T) {
 	// Ensure GRPC_PORT is unset for this test.
+	// t.Setenv restores the original value when the test ends.
 	t.Setenv("GRPC_PORT", "")
-	os.Unsetenv("GRPC_PORT")
 
 	port := os.Getenv("GRPC_PORT")
 	if port != "" {
