@@ -1,3 +1,5 @@
+version: "2"
+
 run:
   timeout: 5m
   go: "1.23"
@@ -7,42 +9,46 @@ linters:
     - errcheck
     - govet
     - staticcheck
-    - gosimple
     - unused
     - ineffassign
-    - typecheck
-    - gofumpt
-    - goimports
     - misspell
     - prealloc
     - revive
     - unconvert
     - unparam
 
-linters-settings:
-  gofumpt:
-    extra-rules: true
-  goimports:
-    local-prefixes: github.com/akaitigo/shokudo-nexus
-  revive:
-    rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: increment-decrement
-      - name: var-naming
-      - name: package-comments
-        disabled: true
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
+  settings:
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+
+  settings:
+    gofumpt:
+      extra-rules: true
+    goimports:
+      local-prefixes:
+        - github.com/akaitigo/shokudo-nexus
 
 issues:
   max-issues-per-linter: 50

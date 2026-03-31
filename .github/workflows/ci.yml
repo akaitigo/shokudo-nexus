@@ -28,7 +28,7 @@ jobs:
         run: |
           go install mvdan.cc/gofumpt@latest
           go install golang.org/x/tools/cmd/goimports@latest
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.64.8
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.11.4
 
       - name: Format check
         run: |
@@ -76,6 +76,9 @@ jobs:
   proto:
     name: Proto (buf)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
