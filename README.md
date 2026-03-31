@@ -22,7 +22,7 @@
 | インフラ | GCP Cloud Run |
 | Proto管理 | buf |
 
-## セットアップ
+## Quick Start
 
 ### 前提条件
 
@@ -30,6 +30,14 @@
 - Node.js 22+
 - buf CLI
 - GCP アカウント（Firestore）
+
+### Clone & Setup
+
+```bash
+git clone https://github.com/akaitigo/shokudo-nexus.git
+cd shokudo-nexus
+cp .env.example .env  # 環境変数を編集
+```
 
 ### バックエンド
 
