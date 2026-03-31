@@ -162,6 +162,7 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 
 		fusionReq.Status = domain.FusionRequestStatusApproved
 		fusionReq.FoodItemID = req.GetFoodItemId()
+		fusionReq.ResponderShokudoID = foodItem.DonorID
 	case "REJECTED":
 		fusionReq.Status = domain.FusionRequestStatusRejected
 	}
