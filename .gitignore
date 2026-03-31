@@ -39,8 +39,8 @@ Thumbs.db
 .env.staging
 .env.development
 
-# Generated proto
-gen/
+# Generated proto — backend gen tracked for reproducible Go builds
+frontend/src/gen/
 
 # Build
 *.log
