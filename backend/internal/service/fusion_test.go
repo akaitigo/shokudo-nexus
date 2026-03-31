@@ -340,6 +340,7 @@ func TestRespondToFusionRequest_ApprovalSuccess(t *testing.T) {
 		Category: "野菜",
 		Quantity: 10,
 		Unit:     "kg",
+		DonorID:  "shokudo-B",
 		Status:   domain.FoodItemStatusAvailable,
 	}
 
@@ -360,11 +361,65 @@ func TestRespondToFusionRequest_ApprovalSuccess(t *testing.T) {
 		t.Errorf("expected status %q, got %q", "approved", resp.FusionRequest.Status)
 	}
 
+	// ResponderShokudoID が FoodItem の DonorID で埋まっていることを確認
+	if resp.FusionRequest.ResponderShokudoId != "shokudo-B" {
+		t.Errorf("expected responder_shokudo_id %q, got %q",
+			"shokudo-B", resp.FusionRequest.ResponderShokudoId)
+	}
+
 	// FoodItem のステータスが reserved に変更されていることを確認
 	item, _ := foodStore.Get(context.Background(), foodItem.ID)
 	if item.Status != domain.FoodItemStatusReserved {
 		t.Errorf("expected food item status %q, got %q",
 			domain.FoodItemStatusReserved, item.Status)
+	}
+}
+
+func TestRespondToFusionRequest_ApprovalSetsResponderShokudoID(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	foodStore := newMockFoodItemStore()
+
+	fusionReq := &domain.FusionRequest{
+		ID:              "req-resp",
+		DesiredCategory: "肉類",
+		DesiredQuantity: 2,
+		Unit:            "kg",
+		Status:          domain.FusionRequestStatusPending,
+	}
+	foodItem := &domain.FoodItem{
+		ID:       "food-resp",
+		Category: "肉類",
+		Quantity: 5,
+		Unit:     "kg",
+		DonorID:  "shokudo-C",
+		Status:   domain.FoodItemStatusAvailable,
+	}
+
+	fusionStore.requests[fusionReq.ID] = fusionReq
+	foodStore.items[foodItem.ID] = foodItem
+
+	svc := NewFusionService(fusionStore, foodStore)
+
+	resp, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
+		FusionRequestId: fusionReq.ID,
+		Response:        "APPROVED",
+		FoodItemId:      foodItem.ID,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// レスポンスの responder_shokudo_id が foodItem.DonorID と一致すること
+	if resp.FusionRequest.ResponderShokudoId != "shokudo-C" {
+		t.Errorf("expected responder_shokudo_id %q, got %q",
+			"shokudo-C", resp.FusionRequest.ResponderShokudoId)
+	}
+
+	// ドメインモデル側でも永続化されていることを確認
+	stored, _ := fusionStore.Get(context.Background(), fusionReq.ID)
+	if stored.ResponderShokudoID != "shokudo-C" {
+		t.Errorf("expected stored ResponderShokudoID %q, got %q",
+			"shokudo-C", stored.ResponderShokudoID)
 	}
 }
 
