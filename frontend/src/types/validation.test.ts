@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import type { CreateFoodItemInput, CreateFusionRequestInput } from "@/types/domain";
 import {
 	getExpiryLevel,
@@ -5,7 +6,6 @@ import {
 	validateFoodItemInput,
 	validateFusionRequestInput,
 } from "@/types/validation";
-import { describe, expect, it } from "vitest";
 
 describe("validateFoodItemInput", () => {
 	const validInput: CreateFoodItemInput = {

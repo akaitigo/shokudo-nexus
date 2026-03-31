@@ -1,11 +1,11 @@
-import { FusionRequestForm } from "@/components/fusion/FusionRequestForm";
-import type { ApiClient } from "@/lib/api-client";
-import { ApiClientProvider } from "@/lib/api-context";
-import type { FusionRequest } from "@/types/domain";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+import { FusionRequestForm } from "@/components/fusion/FusionRequestForm";
+import type { ApiClient } from "@/lib/api-client";
+import { ApiClientProvider } from "@/lib/api-context";
+import type { FusionRequest } from "@/types/domain";
 
 const mockFusionRequest: FusionRequest = {
 	id: "fusion-0001",

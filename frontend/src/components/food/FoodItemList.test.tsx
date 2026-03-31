@@ -1,11 +1,11 @@
-import { FoodItemList } from "@/components/food/FoodItemList";
-import type { ApiClient } from "@/lib/api-client";
-import { ApiClientProvider } from "@/lib/api-context";
-import type { FoodItem } from "@/types/domain";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+import { FoodItemList } from "@/components/food/FoodItemList";
+import type { ApiClient } from "@/lib/api-client";
+import { ApiClientProvider } from "@/lib/api-context";
+import type { FoodItem } from "@/types/domain";
 
 const mockItems: FoodItem[] = [
 	{

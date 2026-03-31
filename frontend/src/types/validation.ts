@@ -1,5 +1,5 @@
-import { FOOD_CATEGORIES, FOOD_UNITS } from "./domain";
 import type { CreateFoodItemInput, CreateFusionRequestInput, FoodCategory, FoodUnit } from "./domain";
+import { FOOD_CATEGORIES, FOOD_UNITS } from "./domain";
 
 /** 食品登録バリデーションエラー。 */
 export interface FoodItemErrors {

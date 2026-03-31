@@ -87,7 +87,9 @@ body {
 	color: var(--color-text-muted);
 	font-size: 0.875rem;
 	font-weight: 500;
-	transition: background-color 0.15s, color 0.15s;
+	transition:
+		background-color 0.15s,
+		color 0.15s;
 }
 
 .app-nav a:hover,
@@ -210,7 +212,9 @@ body {
 	font-size: 0.875rem;
 	font-weight: 500;
 	cursor: pointer;
-	transition: background-color 0.15s, color 0.15s;
+	transition:
+		background-color 0.15s,
+		color 0.15s;
 	text-decoration: none;
 	line-height: 1.5;
 }

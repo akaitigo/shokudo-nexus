@@ -1,6 +1,6 @@
+import { useCallback, useState } from "react";
 import { useApiClient } from "@/lib/api-context";
 import type { CreateFusionRequestInput, FusionRequest } from "@/types/domain";
-import { useCallback, useState } from "react";
 
 interface UseFusionRequestsReturn {
 	readonly items: readonly FusionRequest[];
