@@ -1,6 +1,6 @@
+import type { ServiceType } from "@bufbuild/protobuf";
 import { createPromiseClient } from "@connectrpc/connect";
 import { createGrpcWebTransport } from "@connectrpc/connect-web";
-import { FoodInventoryService, FusionService } from "@/gen/shokudo/v1/service_connect";
 import type { ApiClient, ListFoodItemsResult, ListFusionRequestsResult } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
 import type {
@@ -47,20 +47,43 @@ interface ListResponseFields {
 	totalCount?: unknown;
 }
 
+/** サービス定義の注入パラメータ。gen ファイルへの直接依存を回避する。 */
+export interface GrpcServiceDefs {
+	readonly foodInventoryService: ServiceType;
+	readonly fusionService: ServiceType;
+}
+
+/**
+ * RPC メソッドを安全に呼び出すヘルパー。
+ * createPromiseClient が返す Client<ServiceType> の各メソッドは
+ * index signature 由来で undefined になりうるため、
+ * 存在チェック付きで呼び出す。
+ */
+type RpcCaller = Record<string, ((request: unknown) => Promise<unknown>) | undefined>;
+
+function callRpc(client: RpcCaller, method: string, request: unknown): Promise<unknown> {
+	const fn = client[method];
+	if (fn === undefined) {
+		throw new ApiError("INTERNAL", `RPC method "${method}" not found on client`);
+	}
+	return fn(request);
+}
+
 /**
  * Connect gRPC-Web トランスポートを使用する実 API クライアントを作成する。
  *
  * @param baseUrl - gRPC バックエンドの URL（例: "http://localhost:8080"）
+ * @param services - 生成されたサービス定義（FoodInventoryService, FusionService）
  */
-export function createGrpcApiClient(baseUrl: string): ApiClient {
+export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs): ApiClient {
 	const transport = createGrpcWebTransport({ baseUrl });
-	const foodClient = createPromiseClient(FoodInventoryService, transport);
-	const fusionClient = createPromiseClient(FusionService, transport);
+	const foodClient = createPromiseClient(services.foodInventoryService, transport) as unknown as RpcCaller;
+	const fusionClient = createPromiseClient(services.fusionService, transport) as unknown as RpcCaller;
 
 	return {
 		async createFoodItem(input: CreateFoodItemInput): Promise<FoodItem> {
 			try {
-				const response = await foodClient.createFoodItem({
+				const response = await callRpc(foodClient, "createFoodItem", {
 					name: input.name,
 					category: input.category || undefined,
 					expiryDate: input.expiryDate,
@@ -68,7 +91,7 @@ export function createGrpcApiClient(baseUrl: string): ApiClient {
 					unit: input.unit || undefined,
 					donorId: input.donorId,
 				});
-				return mapFoodItemResponse(response as unknown as FoodItemFields);
+				return mapFoodItemResponse(response as FoodItemFields);
 			} catch (error) {
 				throw toApiError(error);
 			}
@@ -80,12 +103,12 @@ export function createGrpcApiClient(baseUrl: string): ApiClient {
 			categoryFilter: FoodCategory | "",
 		): Promise<ListFoodItemsResult> {
 			try {
-				const response = await foodClient.listFoodItems({
+				const response = await callRpc(foodClient, "listFoodItems", {
 					pageSize,
 					pageToken,
 					categoryFilter: categoryFilter || undefined,
 				});
-				const fields = response as unknown as ListResponseFields;
+				const fields = response as ListResponseFields;
 				const rawItems = fields.items ?? [];
 				return {
 					items: rawItems.map((item) => mapFoodItemResponse(item as FoodItemFields)),
@@ -101,7 +124,7 @@ export function createGrpcApiClient(baseUrl: string): ApiClient {
 
 		async deleteFoodItem(id: string): Promise<void> {
 			try {
-				await foodClient.deleteFoodItem({ id });
+				await callRpc(foodClient, "deleteFoodItem", { id });
 			} catch (error) {
 				throw toApiError(error);
 			}
@@ -109,14 +132,14 @@ export function createGrpcApiClient(baseUrl: string): ApiClient {
 
 		async createFusionRequest(input: CreateFusionRequestInput): Promise<FusionRequest> {
 			try {
-				const response = await fusionClient.createFusionRequest({
+				const response = await callRpc(fusionClient, "createFusionRequest", {
 					requesterShokudoId: input.requesterShokudoId,
 					desiredCategory: input.desiredCategory || undefined,
 					desiredQuantity: typeof input.desiredQuantity === "number" ? input.desiredQuantity : 0,
 					unit: input.unit || undefined,
 					message: input.message,
 				});
-				return mapFusionRequestResponse(response as unknown as FusionRequestFields);
+				return mapFusionRequestResponse(response as FusionRequestFields);
 			} catch (error) {
 				throw toApiError(error);
 			}
@@ -128,12 +151,12 @@ export function createGrpcApiClient(baseUrl: string): ApiClient {
 			statusFilter: string,
 		): Promise<ListFusionRequestsResult> {
 			try {
-				const response = await fusionClient.listFusionRequests({
+				const response = await callRpc(fusionClient, "listFusionRequests", {
 					pageSize,
 					pageToken,
 					statusFilter: statusFilter || undefined,
 				});
-				const fields = response as unknown as ListResponseFields;
+				const fields = response as ListResponseFields;
 				const rawItems = fields.items ?? [];
 				return {
 					items: rawItems.map((item) => mapFusionRequestResponse(item as FusionRequestFields)),
@@ -153,12 +176,12 @@ export function createGrpcApiClient(baseUrl: string): ApiClient {
 			foodItemId: string,
 		): Promise<FusionRequest> {
 			try {
-				const res = await fusionClient.respondToFusionRequest({
+				const res = await callRpc(fusionClient, "respondToFusionRequest", {
 					id,
 					response,
 					foodItemId,
 				});
-				return mapFusionRequestResponse(res as unknown as FusionRequestFields);
+				return mapFusionRequestResponse(res as FusionRequestFields);
 			} catch (error) {
 				throw toApiError(error);
 			}
