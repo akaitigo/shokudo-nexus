@@ -1,4 +1,6 @@
+import type { ServiceType } from "@bufbuild/protobuf";
 import type { ApiClient } from "@/lib/api-client";
+import { createGrpcApiClient } from "@/lib/grpc-api-client";
 import { mockApiClient } from "@/lib/mock-api-client";
 
 /**
@@ -18,22 +20,30 @@ export function createApiClient(): ApiClient {
 	return createLazyGrpcClient(apiUrl);
 }
 
+/** 生成コードモジュールの型。 */
+interface ServiceConnectModule {
+	FoodInventoryService: ServiceType;
+	FusionService: ServiceType;
+}
+
 /**
  * gRPC クライアントを遅延初期化するプロキシを返す。
- * 各メソッド呼び出し時に初めて grpc-api-client と生成コードをロードする。
+ * 各メソッド呼び出し時に初めて生成コードをロードする。
+ *
+ * gen ファイルのパスを変数化し、`@vite-ignore` で Vite の静的解析を、
+ * 変数参照で TypeScript のモジュール解決をそれぞれ回避する。
+ * CI 環境では frontend/src/gen/ が .gitignore で除外されている。
  */
 function createLazyGrpcClient(apiUrl: string): ApiClient {
 	let resolvedClient: ApiClient | null = null;
 
 	async function getClient(): Promise<ApiClient> {
 		if (resolvedClient === null) {
-			const [{ createGrpcApiClient }, { FoodInventoryService, FusionService }] = await Promise.all([
-				import("@/lib/grpc-api-client"),
-				import("@/gen/shokudo/v1/service_connect"),
-			]);
+			const serviceConnectPath = "@/gen/shokudo/v1/service_connect";
+			const serviceModule = (await import(/* @vite-ignore */ serviceConnectPath)) as ServiceConnectModule;
 			resolvedClient = createGrpcApiClient(apiUrl, {
-				foodInventoryService: FoodInventoryService,
-				fusionService: FusionService,
+				foodInventoryService: serviceModule.FoodInventoryService,
+				fusionService: serviceModule.FusionService,
 			});
 		}
 		return resolvedClient;
