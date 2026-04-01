@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -18,6 +19,9 @@ type FusionService struct {
 	pb.UnimplementedFusionServiceServer
 	fusionRepo   repository.FusionRequestStore
 	foodItemRepo repository.FoodItemStore
+	// approvalMu は承認処理のクリティカルセクションを保護し、
+	// 同一在庫の二重予約を防止する。
+	approvalMu sync.Mutex
 }
 
 // NewFusionService は新しいFusionServiceを生成する。
@@ -97,9 +101,17 @@ func (s *FusionService) ListFusionRequests(ctx context.Context, req *pb.ListFusi
 }
 
 // RespondToFusionRequest は融通リクエストに応答する（承認/拒否）。
+// 承認時はMutexでクリティカルセクションを保護し、同一在庫の二重予約を防止する。
 func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.RespondToFusionRequestRequest) (*pb.RespondToFusionRequestResponse, error) {
 	if err := validateRespondToFusionRequest(req); err != nil {
 		return nil, err
+	}
+
+	// 承認処理時は排他制御を行い、同一在庫の二重予約を防止する。
+	// 拒否処理は競合が発生しないため排他不要。
+	if req.GetResponse() == "APPROVED" {
+		s.approvalMu.Lock()
+		defer s.approvalMu.Unlock()
 	}
 
 	fusionReq, err := s.fusionRepo.Get(ctx, req.GetFusionRequestId())

@@ -423,6 +423,75 @@ func TestRespondToFusionRequest_ApprovalSetsResponderShokudoID(t *testing.T) {
 	}
 }
 
+func TestRespondToFusionRequest_ConcurrentApprovalPreventsDoubleReservation(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	foodStore := newMockFoodItemStore()
+
+	// 1つの食品に対して2つの融通リクエストが同時に承認されるシナリオ
+	foodItem := &domain.FoodItem{
+		ID:       "food-shared",
+		Category: "野菜",
+		Quantity: 5,
+		Unit:     "kg",
+		DonorID:  "shokudo-X",
+		Status:   domain.FoodItemStatusAvailable,
+	}
+	foodStore.items[foodItem.ID] = foodItem
+
+	fusionReq1 := &domain.FusionRequest{
+		ID:              "req-concurrent-1",
+		DesiredCategory: "野菜",
+		DesiredQuantity: 5,
+		Unit:            "kg",
+		Status:          domain.FusionRequestStatusPending,
+	}
+	fusionReq2 := &domain.FusionRequest{
+		ID:              "req-concurrent-2",
+		DesiredCategory: "野菜",
+		DesiredQuantity: 5,
+		Unit:            "kg",
+		Status:          domain.FusionRequestStatusPending,
+	}
+	fusionStore.requests[fusionReq1.ID] = fusionReq1
+	fusionStore.requests[fusionReq2.ID] = fusionReq2
+
+	svc := NewFusionService(fusionStore, foodStore)
+
+	// 並行実行
+	const goroutines = 2
+	results := make(chan error, goroutines)
+
+	approve := func(reqID string) {
+		_, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
+			FusionRequestId: reqID,
+			Response:        "APPROVED",
+			FoodItemId:      foodItem.ID,
+		})
+		results <- err
+	}
+
+	go approve(fusionReq1.ID)
+	go approve(fusionReq2.ID)
+
+	var successCount, failCount int
+	for range goroutines {
+		err := <-results
+		if err == nil {
+			successCount++
+		} else {
+			failCount++
+		}
+	}
+
+	// Mutex保護により、1つだけ成功し、もう1つはFailedPrecondition（food item already reserved）
+	if successCount != 1 {
+		t.Errorf("expected exactly 1 successful approval, got %d", successCount)
+	}
+	if failCount != 1 {
+		t.Errorf("expected exactly 1 failed approval, got %d", failCount)
+	}
+}
+
 func TestRespondToFusionRequest_FusionUpdateFailRollbacksFoodItem(t *testing.T) {
 	fusionStore := newMockFusionRequestStore()
 	foodStore := newMockFoodItemStore()
