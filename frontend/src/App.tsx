@@ -6,11 +6,13 @@ import { FusionRequestList } from "@/components/fusion/FusionRequestList";
 import { HomePage } from "@/components/HomePage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApiClientProvider } from "@/lib/api-context";
-import { mockApiClient } from "@/lib/mock-api-client";
+import { createApiClient } from "@/lib/api-factory";
+
+const apiClient = createApiClient();
 
 export function App(): React.ReactElement {
 	return (
-		<ApiClientProvider client={mockApiClient}>
+		<ApiClientProvider client={apiClient}>
 			<BrowserRouter>
 				<Routes>
 					<Route element={<AppLayout />}>

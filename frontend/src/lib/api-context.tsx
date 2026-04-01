@@ -1,8 +1,7 @@
 import { createContext, useContext } from "react";
 import type { ApiClient } from "@/lib/api-client";
-import { mockApiClient } from "@/lib/mock-api-client";
 
-const ApiClientContext = createContext<ApiClient>(mockApiClient);
+const ApiClientContext = createContext<ApiClient | null>(null);
 
 /** API クライアントプロバイダー。 */
 export function ApiClientProvider({
@@ -15,7 +14,11 @@ export function ApiClientProvider({
 	return <ApiClientContext.Provider value={client}>{children}</ApiClientContext.Provider>;
 }
 
-/** API クライアントを取得するフック。 */
+/** API クライアントを取得するフック。ApiClientProvider 外で使用するとエラー。 */
 export function useApiClient(): ApiClient {
-	return useContext(ApiClientContext);
+	const client = useContext(ApiClientContext);
+	if (client === null) {
+		throw new Error("useApiClient must be used within an ApiClientProvider");
+	}
+	return client;
 }
