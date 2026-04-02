@@ -259,7 +259,6 @@ const (
 	FusionService_CreateFusionRequest_FullMethodName    = "/shokudo.v1.FusionService/CreateFusionRequest"
 	FusionService_ListFusionRequests_FullMethodName     = "/shokudo.v1.FusionService/ListFusionRequests"
 	FusionService_RespondToFusionRequest_FullMethodName = "/shokudo.v1.FusionService/RespondToFusionRequest"
-	FusionService_CompleteFusionRequest_FullMethodName  = "/shokudo.v1.FusionService/CompleteFusionRequest"
 )
 
 // FusionServiceClient is the client API for FusionService service.
@@ -274,8 +273,6 @@ type FusionServiceClient interface {
 	ListFusionRequests(ctx context.Context, in *ListFusionRequestsRequest, opts ...grpc.CallOption) (*ListFusionRequestsResponse, error)
 	// 融通リクエストに応答する（承認/拒否）。
 	RespondToFusionRequest(ctx context.Context, in *RespondToFusionRequestRequest, opts ...grpc.CallOption) (*RespondToFusionRequestResponse, error)
-	// 融通リクエストを完了する（承認済み→完了への遷移）。
-	CompleteFusionRequest(ctx context.Context, in *CompleteFusionRequestRequest, opts ...grpc.CallOption) (*CompleteFusionRequestResponse, error)
 }
 
 type fusionServiceClient struct {
@@ -316,16 +313,6 @@ func (c *fusionServiceClient) RespondToFusionRequest(ctx context.Context, in *Re
 	return out, nil
 }
 
-func (c *fusionServiceClient) CompleteFusionRequest(ctx context.Context, in *CompleteFusionRequestRequest, opts ...grpc.CallOption) (*CompleteFusionRequestResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CompleteFusionRequestResponse)
-	err := c.cc.Invoke(ctx, FusionService_CompleteFusionRequest_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // FusionServiceServer is the server API for FusionService service.
 // All implementations must embed UnimplementedFusionServiceServer
 // for forward compatibility.
@@ -338,8 +325,6 @@ type FusionServiceServer interface {
 	ListFusionRequests(context.Context, *ListFusionRequestsRequest) (*ListFusionRequestsResponse, error)
 	// 融通リクエストに応答する（承認/拒否）。
 	RespondToFusionRequest(context.Context, *RespondToFusionRequestRequest) (*RespondToFusionRequestResponse, error)
-	// 融通リクエストを完了する（承認済み→完了への遷移）。
-	CompleteFusionRequest(context.Context, *CompleteFusionRequestRequest) (*CompleteFusionRequestResponse, error)
 	mustEmbedUnimplementedFusionServiceServer()
 }
 
@@ -358,9 +343,6 @@ func (UnimplementedFusionServiceServer) ListFusionRequests(context.Context, *Lis
 }
 func (UnimplementedFusionServiceServer) RespondToFusionRequest(context.Context, *RespondToFusionRequestRequest) (*RespondToFusionRequestResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RespondToFusionRequest not implemented")
-}
-func (UnimplementedFusionServiceServer) CompleteFusionRequest(context.Context, *CompleteFusionRequestRequest) (*CompleteFusionRequestResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CompleteFusionRequest not implemented")
 }
 func (UnimplementedFusionServiceServer) mustEmbedUnimplementedFusionServiceServer() {}
 func (UnimplementedFusionServiceServer) testEmbeddedByValue()                       {}
@@ -437,24 +419,6 @@ func _FusionService_RespondToFusionRequest_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
-func _FusionService_CompleteFusionRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CompleteFusionRequestRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(FusionServiceServer).CompleteFusionRequest(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: FusionService_CompleteFusionRequest_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(FusionServiceServer).CompleteFusionRequest(ctx, req.(*CompleteFusionRequestRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // FusionService_ServiceDesc is the grpc.ServiceDesc for FusionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -473,10 +437,6 @@ var FusionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RespondToFusionRequest",
 			Handler:    _FusionService_RespondToFusionRequest_Handler,
-		},
-		{
-			MethodName: "CompleteFusionRequest",
-			Handler:    _FusionService_CompleteFusionRequest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

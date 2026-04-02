@@ -52,13 +52,22 @@ export function FusionRequestList(): React.ReactElement {
 
 	const handleRespond = useCallback(
 		async (request: FusionRequest, response: "APPROVED" | "REJECTED") => {
+			let foodItemId = "";
+			if (response === "APPROVED") {
+				const input = window.prompt("提供する食品アイテムIDを入力してください:");
+				if (input === null) return;
+				foodItemId = input.trim();
+				if (!foodItemId) {
+					return;
+				}
+			}
 			const label = response === "APPROVED" ? "承認" : "拒否";
 			if (!window.confirm(`このリクエストを${label}しますか？`)) {
 				return;
 			}
 			setResponding(request.id);
 			try {
-				await respondToRequest(request.id, response);
+				await respondToRequest(request.id, response, foodItemId);
 			} catch {
 				// エラーはフックで処理済み
 			} finally {

@@ -836,98 +836,6 @@ func (x *RespondToFusionRequestResponse) GetFusionRequest() *FusionRequest {
 	return nil
 }
 
-// CompleteFusionRequest のリクエスト。
-type CompleteFusionRequestRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// 融通リクエストのID。必須。
-	FusionRequestId string `protobuf:"bytes,1,opt,name=fusion_request_id,json=fusionRequestId,proto3" json:"fusion_request_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *CompleteFusionRequestRequest) Reset() {
-	*x = CompleteFusionRequestRequest{}
-	mi := &file_shokudo_v1_service_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompleteFusionRequestRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompleteFusionRequestRequest) ProtoMessage() {}
-
-func (x *CompleteFusionRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shokudo_v1_service_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompleteFusionRequestRequest.ProtoReflect.Descriptor instead.
-func (*CompleteFusionRequestRequest) Descriptor() ([]byte, []int) {
-	return file_shokudo_v1_service_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *CompleteFusionRequestRequest) GetFusionRequestId() string {
-	if x != nil {
-		return x.FusionRequestId
-	}
-	return ""
-}
-
-// CompleteFusionRequest のレスポンス。
-type CompleteFusionRequestResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// 更新された融通リクエスト。
-	FusionRequest *FusionRequest `protobuf:"bytes,1,opt,name=fusion_request,json=fusionRequest,proto3" json:"fusion_request,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CompleteFusionRequestResponse) Reset() {
-	*x = CompleteFusionRequestResponse{}
-	mi := &file_shokudo_v1_service_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CompleteFusionRequestResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CompleteFusionRequestResponse) ProtoMessage() {}
-
-func (x *CompleteFusionRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shokudo_v1_service_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CompleteFusionRequestResponse.ProtoReflect.Descriptor instead.
-func (*CompleteFusionRequestResponse) Descriptor() ([]byte, []int) {
-	return file_shokudo_v1_service_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *CompleteFusionRequestResponse) GetFusionRequest() *FusionRequest {
-	if x != nil {
-		return x.FusionRequest
-	}
-	return nil
-}
-
 // 食品アイテムのドメインモデル。
 type FoodItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -957,7 +865,7 @@ type FoodItem struct {
 
 func (x *FoodItem) Reset() {
 	*x = FoodItem{}
-	mi := &file_shokudo_v1_service_proto_msgTypes[16]
+	mi := &file_shokudo_v1_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -969,7 +877,7 @@ func (x *FoodItem) String() string {
 func (*FoodItem) ProtoMessage() {}
 
 func (x *FoodItem) ProtoReflect() protoreflect.Message {
-	mi := &file_shokudo_v1_service_proto_msgTypes[16]
+	mi := &file_shokudo_v1_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -982,7 +890,7 @@ func (x *FoodItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FoodItem.ProtoReflect.Descriptor instead.
 func (*FoodItem) Descriptor() ([]byte, []int) {
-	return file_shokudo_v1_service_proto_rawDescGZIP(), []int{16}
+	return file_shokudo_v1_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *FoodItem) GetId() string {
@@ -1086,7 +994,7 @@ type FusionRequest struct {
 
 func (x *FusionRequest) Reset() {
 	*x = FusionRequest{}
-	mi := &file_shokudo_v1_service_proto_msgTypes[17]
+	mi := &file_shokudo_v1_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1098,7 +1006,7 @@ func (x *FusionRequest) String() string {
 func (*FusionRequest) ProtoMessage() {}
 
 func (x *FusionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shokudo_v1_service_proto_msgTypes[17]
+	mi := &file_shokudo_v1_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1111,7 +1019,7 @@ func (x *FusionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FusionRequest.ProtoReflect.Descriptor instead.
 func (*FusionRequest) Descriptor() ([]byte, []int) {
-	return file_shokudo_v1_service_proto_rawDescGZIP(), []int{17}
+	return file_shokudo_v1_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *FusionRequest) GetId() string {
@@ -1249,10 +1157,6 @@ const file_shokudo_v1_service_proto_rawDesc = "" +
 	"\ffood_item_id\x18\x03 \x01(\tR\n" +
 	"foodItemId\"b\n" +
 	"\x1eRespondToFusionRequestResponse\x12@\n" +
-	"\x0efusion_request\x18\x01 \x01(\v2\x19.shokudo.v1.FusionRequestR\rfusionRequest\"J\n" +
-	"\x1cCompleteFusionRequestRequest\x12*\n" +
-	"\x11fusion_request_id\x18\x01 \x01(\tR\x0ffusionRequestId\"a\n" +
-	"\x1dCompleteFusionRequestResponse\x12@\n" +
 	"\x0efusion_request\x18\x01 \x01(\v2\x19.shokudo.v1.FusionRequestR\rfusionRequest\"\x8c\x02\n" +
 	"\bFoodItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -1289,12 +1193,11 @@ const file_shokudo_v1_service_proto_rawDesc = "" +
 	"\x0eCreateFoodItem\x12!.shokudo.v1.CreateFoodItemRequest\x1a\".shokudo.v1.CreateFoodItemResponse\x12N\n" +
 	"\vGetFoodItem\x12\x1e.shokudo.v1.GetFoodItemRequest\x1a\x1f.shokudo.v1.GetFoodItemResponse\x12T\n" +
 	"\rListFoodItems\x12 .shokudo.v1.ListFoodItemsRequest\x1a!.shokudo.v1.ListFoodItemsResponse\x12W\n" +
-	"\x0eDeleteFoodItem\x12!.shokudo.v1.DeleteFoodItemRequest\x1a\".shokudo.v1.DeleteFoodItemResponse2\xbb\x03\n" +
+	"\x0eDeleteFoodItem\x12!.shokudo.v1.DeleteFoodItemRequest\x1a\".shokudo.v1.DeleteFoodItemResponse2\xcd\x02\n" +
 	"\rFusionService\x12f\n" +
 	"\x13CreateFusionRequest\x12&.shokudo.v1.CreateFusionRequestRequest\x1a'.shokudo.v1.CreateFusionRequestResponse\x12c\n" +
 	"\x12ListFusionRequests\x12%.shokudo.v1.ListFusionRequestsRequest\x1a&.shokudo.v1.ListFusionRequestsResponse\x12o\n" +
-	"\x16RespondToFusionRequest\x12).shokudo.v1.RespondToFusionRequestRequest\x1a*.shokudo.v1.RespondToFusionRequestResponse\x12l\n" +
-	"\x15CompleteFusionRequest\x12(.shokudo.v1.CompleteFusionRequestRequest\x1a).shokudo.v1.CompleteFusionRequestResponseB\xab\x01\n" +
+	"\x16RespondToFusionRequest\x12).shokudo.v1.RespondToFusionRequestRequest\x1a*.shokudo.v1.RespondToFusionRequestResponseB\xab\x01\n" +
 	"\x0ecom.shokudo.v1B\fServiceProtoP\x01ZBgithub.com/akaitigo/shokudo-nexus/backend/gen/shokudo/v1;shokudov1\xa2\x02\x03SXX\xaa\x02\n" +
 	"Shokudo.V1\xca\x02\n" +
 	"Shokudo\\V1\xe2\x02\x16Shokudo\\V1\\GPBMetadata\xea\x02\vShokudo::V1b\x06proto3"
@@ -1311,7 +1214,7 @@ func file_shokudo_v1_service_proto_rawDescGZIP() []byte {
 	return file_shokudo_v1_service_proto_rawDescData
 }
 
-var file_shokudo_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_shokudo_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_shokudo_v1_service_proto_goTypes = []any{
 	(*CreateFoodItemRequest)(nil),          // 0: shokudo.v1.CreateFoodItemRequest
 	(*CreateFoodItemResponse)(nil),         // 1: shokudo.v1.CreateFoodItemResponse
@@ -1327,40 +1230,35 @@ var file_shokudo_v1_service_proto_goTypes = []any{
 	(*ListFusionRequestsResponse)(nil),     // 11: shokudo.v1.ListFusionRequestsResponse
 	(*RespondToFusionRequestRequest)(nil),  // 12: shokudo.v1.RespondToFusionRequestRequest
 	(*RespondToFusionRequestResponse)(nil), // 13: shokudo.v1.RespondToFusionRequestResponse
-	(*CompleteFusionRequestRequest)(nil),   // 14: shokudo.v1.CompleteFusionRequestRequest
-	(*CompleteFusionRequestResponse)(nil),  // 15: shokudo.v1.CompleteFusionRequestResponse
-	(*FoodItem)(nil),                       // 16: shokudo.v1.FoodItem
-	(*FusionRequest)(nil),                  // 17: shokudo.v1.FusionRequest
+	(*FoodItem)(nil),                       // 14: shokudo.v1.FoodItem
+	(*FusionRequest)(nil),                  // 15: shokudo.v1.FusionRequest
 }
 var file_shokudo_v1_service_proto_depIdxs = []int32{
-	16, // 0: shokudo.v1.CreateFoodItemResponse.food_item:type_name -> shokudo.v1.FoodItem
-	16, // 1: shokudo.v1.GetFoodItemResponse.food_item:type_name -> shokudo.v1.FoodItem
-	16, // 2: shokudo.v1.ListFoodItemsResponse.food_items:type_name -> shokudo.v1.FoodItem
-	17, // 3: shokudo.v1.CreateFusionRequestResponse.fusion_request:type_name -> shokudo.v1.FusionRequest
-	17, // 4: shokudo.v1.ListFusionRequestsResponse.fusion_requests:type_name -> shokudo.v1.FusionRequest
-	17, // 5: shokudo.v1.RespondToFusionRequestResponse.fusion_request:type_name -> shokudo.v1.FusionRequest
-	17, // 6: shokudo.v1.CompleteFusionRequestResponse.fusion_request:type_name -> shokudo.v1.FusionRequest
-	0,  // 7: shokudo.v1.FoodInventoryService.CreateFoodItem:input_type -> shokudo.v1.CreateFoodItemRequest
-	2,  // 8: shokudo.v1.FoodInventoryService.GetFoodItem:input_type -> shokudo.v1.GetFoodItemRequest
-	4,  // 9: shokudo.v1.FoodInventoryService.ListFoodItems:input_type -> shokudo.v1.ListFoodItemsRequest
-	6,  // 10: shokudo.v1.FoodInventoryService.DeleteFoodItem:input_type -> shokudo.v1.DeleteFoodItemRequest
-	8,  // 11: shokudo.v1.FusionService.CreateFusionRequest:input_type -> shokudo.v1.CreateFusionRequestRequest
-	10, // 12: shokudo.v1.FusionService.ListFusionRequests:input_type -> shokudo.v1.ListFusionRequestsRequest
-	12, // 13: shokudo.v1.FusionService.RespondToFusionRequest:input_type -> shokudo.v1.RespondToFusionRequestRequest
-	14, // 14: shokudo.v1.FusionService.CompleteFusionRequest:input_type -> shokudo.v1.CompleteFusionRequestRequest
-	1,  // 15: shokudo.v1.FoodInventoryService.CreateFoodItem:output_type -> shokudo.v1.CreateFoodItemResponse
-	3,  // 16: shokudo.v1.FoodInventoryService.GetFoodItem:output_type -> shokudo.v1.GetFoodItemResponse
-	5,  // 17: shokudo.v1.FoodInventoryService.ListFoodItems:output_type -> shokudo.v1.ListFoodItemsResponse
-	7,  // 18: shokudo.v1.FoodInventoryService.DeleteFoodItem:output_type -> shokudo.v1.DeleteFoodItemResponse
-	9,  // 19: shokudo.v1.FusionService.CreateFusionRequest:output_type -> shokudo.v1.CreateFusionRequestResponse
-	11, // 20: shokudo.v1.FusionService.ListFusionRequests:output_type -> shokudo.v1.ListFusionRequestsResponse
-	13, // 21: shokudo.v1.FusionService.RespondToFusionRequest:output_type -> shokudo.v1.RespondToFusionRequestResponse
-	15, // 22: shokudo.v1.FusionService.CompleteFusionRequest:output_type -> shokudo.v1.CompleteFusionRequestResponse
-	15, // [15:23] is the sub-list for method output_type
-	7,  // [7:15] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	14, // 0: shokudo.v1.CreateFoodItemResponse.food_item:type_name -> shokudo.v1.FoodItem
+	14, // 1: shokudo.v1.GetFoodItemResponse.food_item:type_name -> shokudo.v1.FoodItem
+	14, // 2: shokudo.v1.ListFoodItemsResponse.food_items:type_name -> shokudo.v1.FoodItem
+	15, // 3: shokudo.v1.CreateFusionRequestResponse.fusion_request:type_name -> shokudo.v1.FusionRequest
+	15, // 4: shokudo.v1.ListFusionRequestsResponse.fusion_requests:type_name -> shokudo.v1.FusionRequest
+	15, // 5: shokudo.v1.RespondToFusionRequestResponse.fusion_request:type_name -> shokudo.v1.FusionRequest
+	0,  // 6: shokudo.v1.FoodInventoryService.CreateFoodItem:input_type -> shokudo.v1.CreateFoodItemRequest
+	2,  // 7: shokudo.v1.FoodInventoryService.GetFoodItem:input_type -> shokudo.v1.GetFoodItemRequest
+	4,  // 8: shokudo.v1.FoodInventoryService.ListFoodItems:input_type -> shokudo.v1.ListFoodItemsRequest
+	6,  // 9: shokudo.v1.FoodInventoryService.DeleteFoodItem:input_type -> shokudo.v1.DeleteFoodItemRequest
+	8,  // 10: shokudo.v1.FusionService.CreateFusionRequest:input_type -> shokudo.v1.CreateFusionRequestRequest
+	10, // 11: shokudo.v1.FusionService.ListFusionRequests:input_type -> shokudo.v1.ListFusionRequestsRequest
+	12, // 12: shokudo.v1.FusionService.RespondToFusionRequest:input_type -> shokudo.v1.RespondToFusionRequestRequest
+	1,  // 13: shokudo.v1.FoodInventoryService.CreateFoodItem:output_type -> shokudo.v1.CreateFoodItemResponse
+	3,  // 14: shokudo.v1.FoodInventoryService.GetFoodItem:output_type -> shokudo.v1.GetFoodItemResponse
+	5,  // 15: shokudo.v1.FoodInventoryService.ListFoodItems:output_type -> shokudo.v1.ListFoodItemsResponse
+	7,  // 16: shokudo.v1.FoodInventoryService.DeleteFoodItem:output_type -> shokudo.v1.DeleteFoodItemResponse
+	9,  // 17: shokudo.v1.FusionService.CreateFusionRequest:output_type -> shokudo.v1.CreateFusionRequestResponse
+	11, // 18: shokudo.v1.FusionService.ListFusionRequests:output_type -> shokudo.v1.ListFusionRequestsResponse
+	13, // 19: shokudo.v1.FusionService.RespondToFusionRequest:output_type -> shokudo.v1.RespondToFusionRequestResponse
+	13, // [13:20] is the sub-list for method output_type
+	6,  // [6:13] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_shokudo_v1_service_proto_init() }
@@ -1374,7 +1272,7 @@ func file_shokudo_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shokudo_v1_service_proto_rawDesc), len(file_shokudo_v1_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
