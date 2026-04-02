@@ -40,9 +40,25 @@ interface FusionRequestFields {
 	updatedAt?: unknown;
 }
 
-/** gRPC レスポンスの一覧フィールド。 */
-interface ListResponseFields {
-	items?: unknown[];
+/** gRPC レスポンスの単一リソースラッパー。 */
+interface FoodItemResponseWrapper {
+	foodItem?: FoodItemFields;
+}
+
+interface FusionRequestResponseWrapper {
+	fusionRequest?: FusionRequestFields;
+}
+
+/** gRPC レスポンスの食品一覧フィールド。 */
+interface ListFoodItemsResponseFields {
+	foodItems?: unknown[];
+	nextPageToken?: unknown;
+	totalCount?: unknown;
+}
+
+/** gRPC レスポンスの融通リクエスト一覧フィールド。 */
+interface ListFusionRequestsResponseFields {
+	fusionRequests?: unknown[];
 	nextPageToken?: unknown;
 	totalCount?: unknown;
 }
@@ -83,15 +99,17 @@ export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs):
 	return {
 		async createFoodItem(input: CreateFoodItemInput): Promise<FoodItem> {
 			try {
+				const expiryDateRfc3339 = toRfc3339Date(input.expiryDate);
 				const response = await callRpc(foodClient, "createFoodItem", {
 					name: input.name,
 					category: input.category || undefined,
-					expiryDate: input.expiryDate,
+					expiryDate: expiryDateRfc3339,
 					quantity: typeof input.quantity === "number" ? input.quantity : 0,
 					unit: input.unit || undefined,
 					donorId: input.donorId,
 				});
-				return mapFoodItemResponse(response as FoodItemFields);
+				const wrapper = response as FoodItemResponseWrapper;
+				return mapFoodItemResponse((wrapper.foodItem ?? response) as FoodItemFields);
 			} catch (error) {
 				throw toApiError(error);
 			}
@@ -108,8 +126,8 @@ export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs):
 					pageToken,
 					categoryFilter: categoryFilter || undefined,
 				});
-				const fields = response as ListResponseFields;
-				const rawItems = fields.items ?? [];
+				const fields = response as ListFoodItemsResponseFields;
+				const rawItems = fields.foodItems ?? [];
 				return {
 					items: rawItems.map((item) => mapFoodItemResponse(item as FoodItemFields)),
 					pagination: {
@@ -139,7 +157,8 @@ export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs):
 					unit: input.unit || undefined,
 					message: input.message,
 				});
-				return mapFusionRequestResponse(response as FusionRequestFields);
+				const wrapper = response as FusionRequestResponseWrapper;
+				return mapFusionRequestResponse((wrapper.fusionRequest ?? response) as FusionRequestFields);
 			} catch (error) {
 				throw toApiError(error);
 			}
@@ -156,8 +175,8 @@ export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs):
 					pageToken,
 					statusFilter: statusFilter || undefined,
 				});
-				const fields = response as ListResponseFields;
-				const rawItems = fields.items ?? [];
+				const fields = response as ListFusionRequestsResponseFields;
+				const rawItems = fields.fusionRequests ?? [];
 				return {
 					items: rawItems.map((item) => mapFusionRequestResponse(item as FusionRequestFields)),
 					pagination: {
@@ -177,11 +196,12 @@ export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs):
 		): Promise<FusionRequest> {
 			try {
 				const res = await callRpc(fusionClient, "respondToFusionRequest", {
-					id,
+					fusionRequestId: id,
 					response,
 					foodItemId,
 				});
-				return mapFusionRequestResponse(res as FusionRequestFields);
+				const wrapper = res as FusionRequestResponseWrapper;
+				return mapFusionRequestResponse((wrapper.fusionRequest ?? res) as FusionRequestFields);
 			} catch (error) {
 				throw toApiError(error);
 			}
@@ -222,6 +242,18 @@ function mapFusionRequestResponse(fields: FusionRequestFields): FusionRequest {
 		createdAt: String(fields.createdAt ?? ""),
 		updatedAt: String(fields.updatedAt ?? ""),
 	};
+}
+
+/**
+ * YYYY-MM-DD 形式の日付文字列を RFC 3339 形式に変換する。
+ * 既に RFC 3339 形式の場合はそのまま返す。
+ */
+function toRfc3339Date(dateStr: string): string {
+	if (!dateStr) return dateStr;
+	// 既に RFC 3339 形式（例: 2026-04-01T00:00:00Z）の場合はそのまま返す
+	if (dateStr.includes("T")) return dateStr;
+	// YYYY-MM-DD → RFC 3339（UTC 00:00:00）
+	return `${dateStr}T00:00:00Z`;
 }
 
 /** Connect エラーを ApiError に変換する。 */

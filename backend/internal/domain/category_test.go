@@ -38,6 +38,7 @@ func TestIsValidUnit(t *testing.T) {
 		{"パック", true},
 		{"本", true},
 		{"袋", true},
+		{"箱", true},
 		{"リットル", false},
 		{"", false},
 		{"g", false},

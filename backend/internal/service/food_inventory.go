@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"log"
 	"time"
 	"unicode/utf8"
 
@@ -64,7 +65,8 @@ func (s *FoodInventoryService) CreateFoodItem(ctx context.Context, req *pb.Creat
 
 	created, err := s.repo.Create(ctx, item)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create food item: %v", err)
+		log.Printf("ERROR: failed to create food item: %v", err)
+		return nil, status.Error(codes.Internal, "failed to create food item")
 	}
 
 	return &pb.CreateFoodItemResponse{
@@ -89,7 +91,8 @@ func (s *FoodInventoryService) GetFoodItem(ctx context.Context, req *pb.GetFoodI
 		item.Status = domain.FoodItemStatusExpired
 		item.UpdatedAt = now
 		if updateErr := s.repo.Update(ctx, item); updateErr != nil {
-			return nil, status.Errorf(codes.Internal, "failed to update expired status: %v", updateErr)
+			log.Printf("ERROR: failed to update expired status for item %s: %v", item.ID, updateErr)
+			return nil, status.Error(codes.Internal, "failed to update food item status")
 		}
 	}
 

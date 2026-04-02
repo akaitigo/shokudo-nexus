@@ -22,6 +22,7 @@ var ValidUnits = map[string]bool{
 	"パック": true,
 	"本":   true,
 	"袋":   true,
+	"箱":   true,
 }
 
 // IsValidUnit は単位が定義済みかどうかを判定する。
