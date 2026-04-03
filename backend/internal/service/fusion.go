@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -198,6 +199,8 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 	}, nil
 }
 
+const maxMessageLength = 5000
+
 func validateCreateFusionRequest(req *pb.CreateFusionRequestRequest) error {
 	if req.GetRequesterShokudoId() == "" {
 		return status.Error(codes.InvalidArgument, "requester_shokudo_id is required")
@@ -210,6 +213,9 @@ func validateCreateFusionRequest(req *pb.CreateFusionRequestRequest) error {
 	}
 	if !domain.IsValidUnit(req.GetUnit()) {
 		return status.Errorf(codes.InvalidArgument, "invalid unit: %q", req.GetUnit())
+	}
+	if utf8.RuneCountInString(req.GetMessage()) > maxMessageLength {
+		return status.Errorf(codes.InvalidArgument, "message must be at most %d characters", maxMessageLength)
 	}
 	return nil
 }

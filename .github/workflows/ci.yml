@@ -53,6 +53,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: bufbuild/buf-setup-action@v1
+
+      - name: Generate proto (frontend)
+        run: buf generate
+        working-directory: .
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

@@ -247,13 +247,16 @@ function mapFusionRequestResponse(fields: FusionRequestFields): FusionRequest {
 /**
  * YYYY-MM-DD 形式の日付文字列を RFC 3339 形式に変換する。
  * 既に RFC 3339 形式の場合はそのまま返す。
+ *
+ * 日付のみ（YYYY-MM-DD）の場合、JST 23:59:59 = UTC 14:59:59 に設定して
+ * 日本時間で「その日の終わり」を表現し、UTC変換による日付ずれを防ぐ。
  */
 function toRfc3339Date(dateStr: string): string {
 	if (!dateStr) return dateStr;
-	// 既に RFC 3339 形式（例: 2026-04-01T00:00:00Z）の場合はそのまま返す
+	// 既に RFC 3339 形式（例: 2026-04-01T14:59:59Z）の場合はそのまま返す
 	if (dateStr.includes("T")) return dateStr;
-	// YYYY-MM-DD → RFC 3339（UTC 00:00:00）
-	return `${dateStr}T00:00:00Z`;
+	// YYYY-MM-DD → JST 23:59:59 (= UTC 14:59:59)
+	return `${dateStr}T14:59:59Z`;
 }
 
 /** Connect エラーを ApiError に変換する。 */

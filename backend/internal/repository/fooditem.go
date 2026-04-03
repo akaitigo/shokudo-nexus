@@ -67,16 +67,27 @@ type ListResult struct {
 	TotalCount    int32
 }
 
+// activeStatuses は一覧表示時に含めるステータス。
+// Firestore の != は OrderBy との組み合わせに制約があるため、
+// "IN" フィルタでアクティブなステータスのみを取得する。
+var activeStatuses = []string{
+	string(domain.FoodItemStatusAvailable),
+	string(domain.FoodItemStatusReserved),
+	string(domain.FoodItemStatusConsumed),
+	string(domain.FoodItemStatusExpired),
+}
+
 // List は食品アイテムの一覧を取得する。カテゴリフィルタとページネーションに対応。
 func (r *FoodItemRepository) List(ctx context.Context, params ListParams) (*ListResult, error) {
 	col := r.client.Collection(foodItemsCollection)
 
-	// 削除済みを除外するクエリ
-	q := col.Where("status", "!=", string(domain.FoodItemStatusDeleted))
+	// Firestore の != は OrderBy と組み合わせると複合インデックスの制約に
+	// 抵触するため、"in" フィルタでアクティブなステータスのみを取得する。
+	q := col.Where("status", "in", activeStatuses)
 
 	if params.CategoryFilter != "" {
 		q = col.Where("category", "==", params.CategoryFilter).
-			Where("status", "!=", string(domain.FoodItemStatusDeleted))
+			Where("status", "in", activeStatuses)
 	}
 
 	q = q.OrderBy("created_at", firestore.Desc)
@@ -88,6 +99,17 @@ func (r *FoodItemRepository) List(ctx context.Context, params ListParams) (*List
 			return nil, status.Errorf(codes.InvalidArgument, "invalid page token: %v", err)
 		}
 		q = q.StartAfter(tokenDoc)
+	}
+
+	// 全件数を取得するための別クエリ（Select で転送量を最小化）
+	countQ := col.Where("status", "in", activeStatuses)
+	if params.CategoryFilter != "" {
+		countQ = col.Where("category", "==", params.CategoryFilter).
+			Where("status", "in", activeStatuses)
+	}
+	totalCount, err := countDocuments(ctx, countQ)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count food items: %w", err)
 	}
 
 	// +1 件多く取得して next_page_token の判定に使う
@@ -123,9 +145,30 @@ func (r *FoodItemRepository) List(ctx context.Context, params ListParams) (*List
 	}
 
 	result.Items = items
-	result.TotalCount = int32(len(items))
+	result.TotalCount = int32(totalCount)
 
 	return result, nil
+}
+
+// countDocuments はクエリにマッチするドキュメント数を返す。
+// Select() でフィールド転送を最小化し、ドキュメント数のみをカウントする。
+func countDocuments(ctx context.Context, q firestore.Query) (int, error) {
+	// __name__ のみ取得して転送量を最小化
+	iter := q.Select().Documents(ctx)
+	defer iter.Stop()
+
+	count := 0
+	for {
+		_, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		count++
+	}
+	return count, nil
 }
 
 // Update は食品アイテムを更新する。

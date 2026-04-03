@@ -77,6 +77,12 @@ func (r *FusionRequestRepository) List(ctx context.Context, params FusionListPar
 		q = col.Query
 	}
 
+	// 全件数を取得するための別クエリ（Select で転送量を最小化）
+	totalCount, err := countDocuments(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count fusion requests: %w", err)
+	}
+
 	q = q.OrderBy("created_at", firestore.Desc)
 
 	if params.PageToken != "" {
@@ -118,7 +124,7 @@ func (r *FusionRequestRepository) List(ctx context.Context, params FusionListPar
 	}
 
 	result.Requests = requests
-	result.TotalCount = int32(len(requests))
+	result.TotalCount = int32(totalCount)
 
 	return result, nil
 }
