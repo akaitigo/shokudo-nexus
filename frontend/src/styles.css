@@ -80,6 +80,46 @@ body {
 	gap: 0.5rem;
 }
 
+/* Auth */
+.app-auth {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-shrink: 0;
+}
+
+.auth-user-info {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.auth-user-name {
+	font-size: 0.8125rem;
+	font-weight: 500;
+	color: var(--color-text);
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.auth-dev-mode {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.125rem 0.5rem;
+	border-radius: 9999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	background-color: #fef3c7;
+	color: #92400e;
+}
+
+.auth-loading {
+	font-size: 0.8125rem;
+	color: var(--color-text-muted);
+}
+
 .app-nav a {
 	padding: 0.5rem 0.75rem;
 	border-radius: var(--radius);
@@ -433,6 +473,11 @@ body {
 	}
 
 	.app-nav {
+		width: 100%;
+		justify-content: center;
+	}
+
+	.app-auth {
 		width: 100%;
 		justify-content: center;
 	}

@@ -7,23 +7,26 @@ import { HomePage } from "@/components/HomePage";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ApiClientProvider } from "@/lib/api-context";
 import { createApiClient } from "@/lib/api-factory";
+import { AuthProvider } from "@/lib/auth-context";
 
 const apiClient = createApiClient();
 
 export function App(): React.ReactElement {
 	return (
-		<ApiClientProvider client={apiClient}>
-			<BrowserRouter>
-				<Routes>
-					<Route element={<AppLayout />}>
-						<Route index element={<HomePage />} />
-						<Route path="food" element={<FoodItemList />} />
-						<Route path="food/new" element={<FoodItemForm />} />
-						<Route path="fusion" element={<FusionRequestList />} />
-						<Route path="fusion/new" element={<FusionRequestForm />} />
-					</Route>
-				</Routes>
-			</BrowserRouter>
-		</ApiClientProvider>
+		<AuthProvider>
+			<ApiClientProvider client={apiClient}>
+				<BrowserRouter>
+					<Routes>
+						<Route element={<AppLayout />}>
+							<Route index element={<HomePage />} />
+							<Route path="food" element={<FoodItemList />} />
+							<Route path="food/new" element={<FoodItemForm />} />
+							<Route path="fusion" element={<FusionRequestList />} />
+							<Route path="fusion/new" element={<FusionRequestForm />} />
+						</Route>
+					</Routes>
+				</BrowserRouter>
+			</ApiClientProvider>
+		</AuthProvider>
 	);
 }

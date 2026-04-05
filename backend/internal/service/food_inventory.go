@@ -3,7 +3,7 @@ package service
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 	"unicode/utf8"
 
@@ -65,7 +65,7 @@ func (s *FoodInventoryService) CreateFoodItem(ctx context.Context, req *pb.Creat
 
 	created, err := s.repo.Create(ctx, item)
 	if err != nil {
-		log.Printf("ERROR: failed to create food item: %v", err)
+		slog.Error("failed to create food item", "error", err)
 		return nil, status.Error(codes.Internal, "failed to create food item")
 	}
 
@@ -91,7 +91,7 @@ func (s *FoodInventoryService) GetFoodItem(ctx context.Context, req *pb.GetFoodI
 		item.Status = domain.FoodItemStatusExpired
 		item.UpdatedAt = now
 		if updateErr := s.repo.Update(ctx, item); updateErr != nil {
-			log.Printf("ERROR: failed to update expired status for item %s: %v", item.ID, updateErr)
+			slog.Error("failed to update expired status", "item_id", item.ID, "error", updateErr)
 			return nil, status.Error(codes.Internal, "failed to update food item status")
 		}
 	}
@@ -132,7 +132,9 @@ func (s *FoodInventoryService) ListFoodItems(ctx context.Context, req *pb.ListFo
 			item.Status = domain.FoodItemStatusExpired
 			item.UpdatedAt = now
 			// ベストエフォートで更新（リスト表示を遅延させない）
-			_ = s.repo.Update(ctx, item)
+			if updateErr := s.repo.Update(ctx, item); updateErr != nil {
+				slog.Warn("failed to update expired status on list", "item_id", item.ID, "error", updateErr)
+			}
 		}
 		pbItems = append(pbItems, domainFoodItemToProto(item))
 	}

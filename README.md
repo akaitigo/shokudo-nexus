@@ -26,7 +26,7 @@
 
 ### 前提条件
 
-- Go 1.23+
+- Go 1.25+
 - Node.js 22+
 - buf CLI
 - GCP アカウント（Firestore）
@@ -71,19 +71,26 @@ make check
 
 ## 環境変数
 
+バックエンド (`backend/.env.example`) とフロントエンド (`frontend/.env.example`) の両方を参照してください。
+
 ```bash
+# Backend
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
 FIRESTORE_EMULATOR_HOST=localhost:8080  # ローカル開発時
-GRPC_HOST=localhost
 GRPC_PORT=9090
-FIREBASE_API_KEY=your-firebase-api-key
+DISABLE_AUTH=true  # ローカル開発時に認証を無効化
+
+# Frontend
+VITE_API_URL=http://localhost:8080
+VITE_FIREBASE_API_KEY=your-firebase-api-key
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
 ```
 
-> **警告**: 本番利用前に以下の対応が必要です:
-> - Firebase Auth の認証フロー実装
+> **注意**: 本番利用前に以下の対応が必要です:
 > - Firestore セキュリティルールの設定
 > - TLS 証明書の設定
-> - 適切なアクセス制御の実装
+> - `DISABLE_AUTH=true` を削除して Firebase Auth を有効化
 
 ## ライセンス
 
