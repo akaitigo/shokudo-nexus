@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -54,7 +54,7 @@ func (s *FusionService) CreateFusionRequest(ctx context.Context, req *pb.CreateF
 
 	created, err := s.fusionRepo.Create(ctx, fusionReq)
 	if err != nil {
-		log.Printf("ERROR: failed to create fusion request: %v", err)
+		slog.Error("failed to create fusion request", "error", err)
 		return nil, status.Error(codes.Internal, "failed to create fusion request")
 	}
 
@@ -172,7 +172,7 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 		foodItem.Status = domain.FoodItemStatusReserved
 		foodItem.UpdatedAt = now
 		if updateErr := s.foodItemRepo.Update(ctx, foodItem); updateErr != nil {
-			log.Printf("ERROR: failed to update food item status for %s: %v", foodItem.ID, updateErr)
+			slog.Error("failed to update food item status", "food_item_id", foodItem.ID, "error", updateErr)
 			return nil, status.Error(codes.Internal, "failed to update food item status")
 		}
 
@@ -184,12 +184,14 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 	}
 
 	if updateErr := s.fusionRepo.Update(ctx, fusionReq); updateErr != nil {
-		log.Printf("ERROR: failed to update fusion request %s: %v", req.GetFusionRequestId(), updateErr)
+		slog.Error("failed to update fusion request", "fusion_request_id", req.GetFusionRequestId(), "error", updateErr)
 		// Rollback: food item が reserved に更新済みの場合、available に戻す
 		if req.GetResponse() == "APPROVED" && foodItem != nil {
 			foodItem.Status = domain.FoodItemStatusAvailable
 			foodItem.UpdatedAt = now
-			_ = s.foodItemRepo.Update(ctx, foodItem) // best-effort rollback
+			if rollbackErr := s.foodItemRepo.Update(ctx, foodItem); rollbackErr != nil {
+				slog.Error("failed to rollback food item status", "food_item_id", foodItem.ID, "error", rollbackErr)
+			}
 		}
 		return nil, status.Error(codes.Internal, "failed to update fusion request")
 	}

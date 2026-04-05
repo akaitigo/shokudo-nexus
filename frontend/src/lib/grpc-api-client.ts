@@ -1,8 +1,10 @@
 import type { ServiceType } from "@bufbuild/protobuf";
+import type { Interceptor } from "@connectrpc/connect";
 import { createPromiseClient } from "@connectrpc/connect";
 import { createGrpcWebTransport } from "@connectrpc/connect-web";
 import type { ApiClient, ListFoodItemsResult, ListFusionRequestsResult } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
+import { getIdToken } from "@/lib/firebase";
 import type {
 	CreateFoodItemInput,
 	CreateFusionRequestInput,
@@ -91,8 +93,23 @@ function callRpc(client: RpcCaller, method: string, request: unknown): Promise<u
  * @param baseUrl - gRPC バックエンドの URL（例: "http://localhost:8080"）
  * @param services - 生成されたサービス定義（FoodInventoryService, FusionService）
  */
+/**
+ * Firebase Auth IDトークンをリクエストヘッダーに自動付与するインターセプタ。
+ * ユーザーが認証済みの場合、Authorization: Bearer <token> を付与する。
+ */
+const authInterceptor: Interceptor = (next) => async (req) => {
+	const token = await getIdToken();
+	if (token !== null) {
+		req.header.set("Authorization", `Bearer ${token}`);
+	}
+	return next(req);
+};
+
 export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs): ApiClient {
-	const transport = createGrpcWebTransport({ baseUrl });
+	const transport = createGrpcWebTransport({
+		baseUrl,
+		interceptors: [authInterceptor],
+	});
 	const foodClient = createPromiseClient(services.foodInventoryService, transport) as unknown as RpcCaller;
 	const fusionClient = createPromiseClient(services.fusionService, transport) as unknown as RpcCaller;
 
