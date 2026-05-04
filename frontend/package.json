@@ -16,7 +16,7 @@
 		"check": "npm run format && npm run lint && npm run typecheck && npm run test && npm run build"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.12",
+		"@biomejs/biome": "^2.4.14",
 		"@playwright/test": "^1.59.1",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.2",
