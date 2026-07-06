@@ -67,14 +67,16 @@ func UnaryInterceptor(verifier TokenVerifier) grpc.UnaryServerInterceptor {
 		// トークン検証
 		user, err := verifier.VerifyIDToken(ctx, token)
 		if err != nil {
-			slog.Warn("token verification failed",
+			slog.Warn(
+				"token verification failed",
 				"method", info.FullMethod,
 				"error", err,
 			)
 			return nil, status.Error(codes.Unauthenticated, "invalid or expired token")
 		}
 
-		slog.Debug("authenticated request",
+		slog.Debug(
+			"authenticated request",
 			"method", info.FullMethod,
 			"uid", user.UID,
 		)
