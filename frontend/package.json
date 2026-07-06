@@ -40,7 +40,7 @@
 		"@connectrpc/connect-web": "^1.7.0",
 		"firebase": "^12.12.1",
 		"react": "^19.2.6",
-		"react-dom": "^19.2.5",
+		"react-dom": "^19.2.7",
 		"react-router-dom": "^7.14.0"
 	}
 }
