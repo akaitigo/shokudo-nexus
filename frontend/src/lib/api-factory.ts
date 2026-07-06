@@ -1,4 +1,4 @@
-import type { ServiceType } from "@bufbuild/protobuf";
+import type { DescService } from "@bufbuild/protobuf";
 import type { ApiClient } from "@/lib/api-client";
 import { createGrpcApiClient } from "@/lib/grpc-api-client";
 import { mockApiClient } from "@/lib/mock-api-client";
@@ -21,9 +21,9 @@ export function createApiClient(): ApiClient {
 }
 
 /** 生成コードモジュールの型。 */
-interface ServiceConnectModule {
-	FoodInventoryService: ServiceType;
-	FusionService: ServiceType;
+interface ServicePbModule {
+	FoodInventoryService: DescService;
+	FusionService: DescService;
 }
 
 /**
@@ -39,8 +39,8 @@ function createLazyGrpcClient(apiUrl: string): ApiClient {
 
 	async function getClient(): Promise<ApiClient> {
 		if (resolvedClient === null) {
-			const serviceConnectPath = "@/gen/shokudo/v1/service_connect";
-			const serviceModule = (await import(/* @vite-ignore */ serviceConnectPath)) as ServiceConnectModule;
+			const servicePbPath = "@/gen/shokudo/v1/service_pb";
+			const serviceModule = (await import(/* @vite-ignore */ servicePbPath)) as ServicePbModule;
 			resolvedClient = createGrpcApiClient(apiUrl, {
 				foodInventoryService: serviceModule.FoodInventoryService,
 				fusionService: serviceModule.FusionService,

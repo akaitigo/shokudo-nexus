@@ -1,6 +1,6 @@
-import type { ServiceType } from "@bufbuild/protobuf";
+import type { DescService } from "@bufbuild/protobuf";
 import type { Interceptor } from "@connectrpc/connect";
-import { createPromiseClient } from "@connectrpc/connect";
+import { createClient } from "@connectrpc/connect";
 import { createGrpcWebTransport } from "@connectrpc/connect-web";
 import type { ApiClient, ListFoodItemsResult, ListFusionRequestsResult } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-client";
@@ -67,13 +67,13 @@ interface ListFusionRequestsResponseFields {
 
 /** サービス定義の注入パラメータ。gen ファイルへの直接依存を回避する。 */
 export interface GrpcServiceDefs {
-	readonly foodInventoryService: ServiceType;
-	readonly fusionService: ServiceType;
+	readonly foodInventoryService: DescService;
+	readonly fusionService: DescService;
 }
 
 /**
  * RPC メソッドを安全に呼び出すヘルパー。
- * createPromiseClient が返す Client<ServiceType> の各メソッドは
+ * createClient が返す Client<DescService> の各メソッドは
  * index signature 由来で undefined になりうるため、
  * 存在チェック付きで呼び出す。
  */
@@ -110,8 +110,8 @@ export function createGrpcApiClient(baseUrl: string, services: GrpcServiceDefs):
 		baseUrl,
 		interceptors: [authInterceptor],
 	});
-	const foodClient = createPromiseClient(services.foodInventoryService, transport) as unknown as RpcCaller;
-	const fusionClient = createPromiseClient(services.fusionService, transport) as unknown as RpcCaller;
+	const foodClient = createClient(services.foodInventoryService, transport) as unknown as RpcCaller;
+	const fusionClient = createClient(services.fusionService, transport) as unknown as RpcCaller;
 
 	return {
 		async createFoodItem(input: CreateFoodItemInput): Promise<FoodItem> {
