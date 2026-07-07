@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"log/slog"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -22,19 +21,24 @@ type FusionService struct {
 	pb.UnimplementedFusionServiceServer
 	fusionRepo   repository.FusionRequestStore
 	foodItemRepo repository.FoodItemStore
-	cfg          config.ServiceConfig
-	// approvalMu は承認処理のクリティカルセクションを保護し、
-	// 同一在庫の二重予約を防止する。
-	approvalMu sync.Mutex
+	// approvalRunner は承認処理を Firestore トランザクションで実行し、
+	// 複数インスタンス間でも同一在庫の二重予約を防止する。
+	approvalRunner repository.ApprovalRunner
+	cfg            config.ServiceConfig
 }
 
 // NewFusionService は新しいFusionServiceを生成する。
 // 調整可能なパラメータは環境変数から読み込む。
-func NewFusionService(fusionRepo repository.FusionRequestStore, foodItemRepo repository.FoodItemStore) *FusionService {
+func NewFusionService(
+	fusionRepo repository.FusionRequestStore,
+	foodItemRepo repository.FoodItemStore,
+	approvalRunner repository.ApprovalRunner,
+) *FusionService {
 	return &FusionService{
-		fusionRepo:   fusionRepo,
-		foodItemRepo: foodItemRepo,
-		cfg:          config.LoadServiceConfig(),
+		fusionRepo:     fusionRepo,
+		foodItemRepo:   foodItemRepo,
+		approvalRunner: approvalRunner,
+		cfg:            config.LoadServiceConfig(),
 	}
 }
 
@@ -108,101 +112,121 @@ func (s *FusionService) ListFusionRequests(ctx context.Context, req *pb.ListFusi
 }
 
 // RespondToFusionRequest は融通リクエストに応答する（承認/拒否）。
-// 承認時はMutexでクリティカルセクションを保護し、同一在庫の二重予約を防止する。
+// 承認は Firestore トランザクションで在庫予約と状態遷移をアトミックに行い、
+// 複数インスタンス間でも同一在庫の二重予約を防止する。
 func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.RespondToFusionRequestRequest) (*pb.RespondToFusionRequestResponse, error) {
 	if err := validateRespondToFusionRequest(req); err != nil {
 		return nil, err
 	}
 
-	// 承認処理時は排他制御を行い、同一在庫の二重予約を防止する。
-	// 拒否処理は競合が発生しないため排他不要。
-	if req.GetResponse() == "APPROVED" {
-		s.approvalMu.Lock()
-		defer s.approvalMu.Unlock()
-	}
+	now := time.Now().UTC()
 
-	fusionReq, err := s.fusionRepo.Get(ctx, req.GetFusionRequestId())
+	var updated *domain.FusionRequest
+	var err error
+	if req.GetResponse() == "APPROVED" {
+		updated, err = s.approveFusionRequest(ctx, req, now)
+	} else {
+		updated, err = s.rejectFusionRequest(ctx, req, now)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	// ステータス遷移バリデーション: pending からのみ応答可能
-	if fusionReq.Status != domain.FusionRequestStatusPending {
-		return nil, status.Errorf(codes.FailedPrecondition,
-			"fusion request status is %q, only %q can be responded to",
-			fusionReq.Status, domain.FusionRequestStatusPending)
-	}
+	return &pb.RespondToFusionRequestResponse{
+		FusionRequest: domainFusionRequestToProto(updated),
+	}, nil
+}
 
-	now := time.Now().UTC()
-	fusionReq.UpdatedAt = now
+// approveFusionRequest は承認処理を単一の Firestore トランザクションで実行する。
+// 融通リクエストと食品アイテムの読み取り・整合性チェック・書き込みをアトミックに行い、
+// 途中で在庫状態が変化した場合はトランザクションが再試行される。
+func (s *FusionService) approveFusionRequest(ctx context.Context, req *pb.RespondToFusionRequestRequest, now time.Time) (*domain.FusionRequest, error) {
+	var updated *domain.FusionRequest
+	err := s.approvalRunner.RunApproval(ctx, func(tx repository.ApprovalTx) error {
+		// 読み取りは書き込みより前にまとめて行う（Firestore トランザクションの制約）。
+		fusionReq, err := tx.GetFusionRequest(req.GetFusionRequestId())
+		if err != nil {
+			return err
+		}
+		if fusionReq.Status != domain.FusionRequestStatusPending {
+			return status.Errorf(codes.FailedPrecondition,
+				"fusion request status is %q, only %q can be responded to",
+				fusionReq.Status, domain.FusionRequestStatusPending)
+		}
 
-	var foodItem *domain.FoodItem // ロールバック用にスコープを関数レベルに引き上げ
-
-	switch req.GetResponse() {
-	case "APPROVED":
-		// 承認時: FoodItem のステータスを reserved に変更
-		var foodErr error
-		foodItem, foodErr = s.foodItemRepo.Get(ctx, req.GetFoodItemId())
-		if foodErr != nil {
-			return nil, foodErr
+		foodItem, err := tx.GetFoodItem(req.GetFoodItemId())
+		if err != nil {
+			return err
 		}
 		if foodItem.Status != domain.FoodItemStatusAvailable {
-			return nil, status.Errorf(codes.FailedPrecondition,
+			return status.Errorf(codes.FailedPrecondition,
 				"food item status is %q, must be %q to approve",
 				foodItem.Status, domain.FoodItemStatusAvailable)
 		}
-
-		// カテゴリ整合性チェック
 		if foodItem.Category != fusionReq.DesiredCategory {
-			return nil, status.Errorf(codes.InvalidArgument,
+			return status.Errorf(codes.InvalidArgument,
 				"food item category %q does not match desired category %q",
 				foodItem.Category, fusionReq.DesiredCategory)
 		}
-
-		// 単位整合性チェック
 		if foodItem.Unit != fusionReq.Unit {
-			return nil, status.Errorf(codes.InvalidArgument,
+			return status.Errorf(codes.InvalidArgument,
 				"food item unit %q does not match desired unit %q",
 				foodItem.Unit, fusionReq.Unit)
 		}
-
-		// 数量充足チェック
 		if foodItem.Quantity < fusionReq.DesiredQuantity {
-			return nil, status.Errorf(codes.InvalidArgument,
+			return status.Errorf(codes.InvalidArgument,
 				"food item quantity %d is less than desired quantity %d",
 				foodItem.Quantity, fusionReq.DesiredQuantity)
 		}
 
 		foodItem.Status = domain.FoodItemStatusReserved
 		foodItem.UpdatedAt = now
-		if updateErr := s.foodItemRepo.Update(ctx, foodItem); updateErr != nil {
-			slog.Error("failed to update food item status", "food_item_id", foodItem.ID, "error", updateErr)
-			return nil, status.Error(codes.Internal, "failed to update food item status")
-		}
-
 		fusionReq.Status = domain.FusionRequestStatusApproved
 		fusionReq.FoodItemID = req.GetFoodItemId()
 		fusionReq.ResponderShokudoID = foodItem.DonorID
-	case "REJECTED":
-		fusionReq.Status = domain.FusionRequestStatusRejected
+		fusionReq.UpdatedAt = now
+
+		if err := tx.SetFoodItem(foodItem); err != nil {
+			return err
+		}
+		if err := tx.SetFusionRequest(fusionReq); err != nil {
+			return err
+		}
+		updated = fusionReq
+		return nil
+	})
+	if err != nil {
+		// バリデーション由来の gRPC status エラー（NotFound/FailedPrecondition/InvalidArgument）は
+		// そのままクライアントへ返す。それ以外（トランザクションのコミット失敗等）は Internal に変換する。
+		if _, ok := status.FromError(err); ok {
+			return nil, err
+		}
+		slog.Error("failed to approve fusion request", "fusion_request_id", req.GetFusionRequestId(), "error", err)
+		return nil, status.Error(codes.Internal, "failed to approve fusion request")
+	}
+	return updated, nil
+}
+
+// rejectFusionRequest は拒否処理を行う。食品在庫を伴わないため競合の余地はなく、
+// 楽観ロックを伴わない単純な状態更新で足りる。
+func (s *FusionService) rejectFusionRequest(ctx context.Context, req *pb.RespondToFusionRequestRequest, now time.Time) (*domain.FusionRequest, error) {
+	fusionReq, err := s.fusionRepo.Get(ctx, req.GetFusionRequestId())
+	if err != nil {
+		return nil, err
+	}
+	if fusionReq.Status != domain.FusionRequestStatusPending {
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"fusion request status is %q, only %q can be responded to",
+			fusionReq.Status, domain.FusionRequestStatusPending)
 	}
 
+	fusionReq.Status = domain.FusionRequestStatusRejected
+	fusionReq.UpdatedAt = now
 	if updateErr := s.fusionRepo.Update(ctx, fusionReq); updateErr != nil {
 		slog.Error("failed to update fusion request", "fusion_request_id", req.GetFusionRequestId(), "error", updateErr)
-		// Rollback: food item が reserved に更新済みの場合、available に戻す
-		if req.GetResponse() == "APPROVED" && foodItem != nil {
-			foodItem.Status = domain.FoodItemStatusAvailable
-			foodItem.UpdatedAt = now
-			if rollbackErr := s.foodItemRepo.Update(ctx, foodItem); rollbackErr != nil {
-				slog.Error("failed to rollback food item status", "food_item_id", foodItem.ID, "error", rollbackErr)
-			}
-		}
 		return nil, status.Error(codes.Internal, "failed to update fusion request")
 	}
-
-	return &pb.RespondToFusionRequestResponse{
-		FusionRequest: domainFusionRequestToProto(fusionReq),
-	}, nil
+	return fusionReq, nil
 }
 
 func validateCreateFusionRequest(req *pb.CreateFusionRequestRequest, cfg config.ServiceConfig) error {

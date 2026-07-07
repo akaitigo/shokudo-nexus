@@ -188,3 +188,86 @@ func (m *mockFusionRequestStore) Update(ctx context.Context, req *domain.FusionR
 	m.updateCalls++
 	return nil
 }
+
+// mockApprovalRunner はテスト用の ApprovalRunner。Firestore トランザクションの
+// 直列化と all-or-nothing なコミットを模倣する。
+type mockApprovalRunner struct {
+	fusion *mockFusionRequestStore
+	food   *mockFoodItemStore
+	mu     sync.Mutex
+	// commitErr を設定するとコールバック成功後のコミットが失敗し、書き込みが破棄される。
+	commitErr error
+}
+
+func newMockApprovalRunner(fusion *mockFusionRequestStore, food *mockFoodItemStore) *mockApprovalRunner {
+	return &mockApprovalRunner{fusion: fusion, food: food}
+}
+
+// RunApproval はコールバックを直列に実行し、成功時のみステージした書き込みを反映する。
+// これによりトランザクションの分離レベルとアトミック性を模倣する。
+func (m *mockApprovalRunner) RunApproval(_ context.Context, fn repository.ApprovalTxFunc) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	tx := &mockApprovalTx{runner: m}
+	if err := fn(tx); err != nil {
+		return err // コールバック失敗時は書き込みを一切適用しない
+	}
+	if m.commitErr != nil {
+		return m.commitErr // コミット失敗を模倣（ステージした書き込みは破棄）
+	}
+
+	if tx.stagedFood != nil {
+		m.food.mu.Lock()
+		m.food.items[tx.stagedFood.ID] = tx.stagedFood
+		m.food.updateCalls++
+		m.food.mu.Unlock()
+	}
+	if tx.stagedFusion != nil {
+		m.fusion.mu.Lock()
+		m.fusion.requests[tx.stagedFusion.ID] = tx.stagedFusion
+		m.fusion.updateCalls++
+		m.fusion.mu.Unlock()
+	}
+	return nil
+}
+
+// mockApprovalTx はステージ方式でトランザクション内の読み書きを模倣する。
+// 書き込みはコミットまでストアへ反映されず、読み取りはコピーを返す。
+type mockApprovalTx struct {
+	runner       *mockApprovalRunner
+	stagedFusion *domain.FusionRequest
+	stagedFood   *domain.FoodItem
+}
+
+func (t *mockApprovalTx) GetFusionRequest(id string) (*domain.FusionRequest, error) {
+	t.runner.fusion.mu.RLock()
+	defer t.runner.fusion.mu.RUnlock()
+	req, ok := t.runner.fusion.requests[id]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "fusion request %q not found", id)
+	}
+	clone := *req
+	return &clone, nil
+}
+
+func (t *mockApprovalTx) GetFoodItem(id string) (*domain.FoodItem, error) {
+	t.runner.food.mu.RLock()
+	defer t.runner.food.mu.RUnlock()
+	item, ok := t.runner.food.items[id]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "food item %q not found", id)
+	}
+	clone := *item
+	return &clone, nil
+}
+
+func (t *mockApprovalTx) SetFusionRequest(req *domain.FusionRequest) error {
+	t.stagedFusion = req
+	return nil
+}
+
+func (t *mockApprovalTx) SetFoodItem(item *domain.FoodItem) error {
+	t.stagedFood = item
+	return nil
+}

@@ -120,14 +120,26 @@ func (s *FoodInventoryService) ListFoodItems(ctx context.Context, req *pb.ListFo
 		return nil, err
 	}
 
-	// 消費期限チェック（オンザフライ）
+	// 消費期限チェック（オンザフライ）。
+	//
+	// 一覧取得時に available かつ期限切れのアイテムを検出したら、その場で expired へ
+	// 永続化する。この書き込みは意図的にベストエフォートとしている:
+	//   - 目的: 期限切れの反映は「次に誰かが読んだとき」で十分であり、一覧応答の
+	//     レイテンシを Firestore 書き込みでブロックしたくない。
+	//   - 失敗時の挙動: 書き込みに失敗しても警告ログのみでリクエストは成功させ、
+	//     レスポンス上のステータスは expired として返す（表示は常に正しい）。
+	//   - 許容リスク: 永続化が失敗したアイテムは、次回の Get/List で再度更新が試行される。
+	//     期限切れ判定はレスポンス生成時に毎回オンザフライで行うため、DB 上のステータスが
+	//     一時的に古くても表示・マッチング（RespondToFusionRequest は available のみ承認）に
+	//     影響しない。リトライ機構・管理者通知は MVP では不要と判断した。
+	// 設計判断の詳細は docs/design-notes.md を参照。
 	now := s.nowFunc()
 	pbItems := make([]*pb.FoodItem, 0, len(result.Items))
 	for _, item := range result.Items {
 		if item.Status == domain.FoodItemStatusAvailable && item.IsExpired(now) {
 			item.Status = domain.FoodItemStatusExpired
 			item.UpdatedAt = now
-			// ベストエフォートで更新（リスト表示を遅延させない）
+			// ベストエフォートで更新（リスト表示を遅延・失敗させない）。
 			if updateErr := s.repo.Update(ctx, item); updateErr != nil {
 				slog.Warn("failed to update expired status on list", "item_id", item.ID, "error", updateErr)
 			}

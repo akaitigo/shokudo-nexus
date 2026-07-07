@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -14,6 +13,12 @@ import (
 	"github.com/akaitigo/shokudo-nexus/backend/internal/config"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/domain"
 )
+
+// newTestFusionService は、承認トランザクションを模倣する mockApprovalRunner を
+// 同じストアに結線した FusionService を生成する。
+func newTestFusionService(fusionStore *mockFusionRequestStore, foodStore *mockFoodItemStore) *FusionService {
+	return NewFusionService(fusionStore, foodStore, newMockApprovalRunner(fusionStore, foodStore))
+}
 
 func TestValidateCreateFusionRequest(t *testing.T) {
 	validReq := &pb.CreateFusionRequestRequest{
@@ -182,7 +187,7 @@ func TestValidateRespondToFusionRequest(t *testing.T) {
 }
 
 func TestListFusionRequests_PageSizeTooLarge(t *testing.T) {
-	svc := NewFusionService(newMockFusionRequestStore(), newMockFoodItemStore())
+	svc := newTestFusionService(newMockFusionRequestStore(), newMockFoodItemStore())
 	_, err := svc.ListFusionRequests(context.Background(), &pb.ListFusionRequestsRequest{PageSize: 101})
 	if err == nil {
 		t.Fatal("expected error for page_size > 100")
@@ -197,7 +202,7 @@ func TestListFusionRequests_PageSizeTooLarge(t *testing.T) {
 }
 
 func TestListFusionRequests_InvalidStatusFilter(t *testing.T) {
-	svc := NewFusionService(newMockFusionRequestStore(), newMockFoodItemStore())
+	svc := newTestFusionService(newMockFusionRequestStore(), newMockFoodItemStore())
 	_, err := svc.ListFusionRequests(context.Background(), &pb.ListFusionRequestsRequest{StatusFilter: "invalid"})
 	if err == nil {
 		t.Fatal("expected error for invalid status filter")
@@ -294,7 +299,7 @@ func TestRespondToFusionRequest_ApprovalValidation(t *testing.T) {
 			fusionStore.requests[tt.fusionReq.ID] = tt.fusionReq
 			foodStore.items[tt.foodItem.ID] = tt.foodItem
 
-			svc := NewFusionService(fusionStore, foodStore)
+			svc := newTestFusionService(fusionStore, foodStore)
 
 			_, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
 				FusionRequestId: tt.fusionReq.ID,
@@ -349,7 +354,7 @@ func TestRespondToFusionRequest_ApprovalSuccess(t *testing.T) {
 	fusionStore.requests[fusionReq.ID] = fusionReq
 	foodStore.items[foodItem.ID] = foodItem
 
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	resp, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
 		FusionRequestId: fusionReq.ID,
@@ -400,7 +405,7 @@ func TestRespondToFusionRequest_ApprovalSetsResponderShokudoID(t *testing.T) {
 	fusionStore.requests[fusionReq.ID] = fusionReq
 	foodStore.items[foodItem.ID] = foodItem
 
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	resp, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
 		FusionRequestId: fusionReq.ID,
@@ -457,7 +462,7 @@ func TestRespondToFusionRequest_ConcurrentApprovalPreventsDoubleReservation(t *t
 	fusionStore.requests[fusionReq1.ID] = fusionReq1
 	fusionStore.requests[fusionReq2.ID] = fusionReq2
 
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	// 並行実行
 	const goroutines = 2
@@ -494,7 +499,7 @@ func TestRespondToFusionRequest_ConcurrentApprovalPreventsDoubleReservation(t *t
 	}
 }
 
-func TestRespondToFusionRequest_FusionUpdateFailRollbacksFoodItem(t *testing.T) {
+func TestRespondToFusionRequest_ApprovalTransactionFailureKeepsFoodItemAvailable(t *testing.T) {
 	fusionStore := newMockFusionRequestStore()
 	foodStore := newMockFoodItemStore()
 
@@ -515,10 +520,11 @@ func TestRespondToFusionRequest_FusionUpdateFailRollbacksFoodItem(t *testing.T) 
 	fusionStore.requests[fusionReq.ID] = fusionReq
 	foodStore.items[foodItem.ID] = foodItem
 
-	// fusionRepo.Update を強制失敗させる
-	fusionStore.updateErr = fmt.Errorf("simulated update failure")
+	// トランザクションのコミットを強制失敗させる。アトミック性により書き込みは適用されない。
+	runner := newMockApprovalRunner(fusionStore, foodStore)
+	runner.commitErr = errors.New("simulated commit failure")
 
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := NewFusionService(fusionStore, foodStore, runner)
 	_, err := svc.RespondToFusionRequest(context.Background(), &pb.RespondToFusionRequestRequest{
 		FusionRequestId: fusionReq.ID,
 		Response:        "APPROVED",
@@ -527,19 +533,28 @@ func TestRespondToFusionRequest_FusionUpdateFailRollbacksFoodItem(t *testing.T) 
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
+	if status.Code(err) != codes.Internal {
+		t.Errorf("expected Internal, got %v", status.Code(err))
+	}
 
-	// FoodItem が available にロールバックされていること
+	// トランザクションが失敗したため FoodItem は available のまま（予約されない）。
 	item, _ := foodStore.Get(context.Background(), foodItem.ID)
 	if item.Status != domain.FoodItemStatusAvailable {
-		t.Errorf("expected food item rolled back to %q, got %q",
+		t.Errorf("expected food item to remain %q, got %q",
 			domain.FoodItemStatusAvailable, item.Status)
+	}
+	// FusionRequest も pending のまま。
+	storedReq, _ := fusionStore.Get(context.Background(), fusionReq.ID)
+	if storedReq.Status != domain.FusionRequestStatusPending {
+		t.Errorf("expected fusion request to remain %q, got %q",
+			domain.FusionRequestStatusPending, storedReq.Status)
 	}
 }
 
 func TestCreateFusionRequest_Success(t *testing.T) {
 	fusionStore := newMockFusionRequestStore()
 	foodStore := newMockFoodItemStore()
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	resp, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
 		RequesterShokudoId: "shokudo-1",
@@ -598,7 +613,7 @@ func TestCreateFusionRequest_Success(t *testing.T) {
 func TestCreateFusionRequest_EmptyMessageAllowed(t *testing.T) {
 	fusionStore := newMockFusionRequestStore()
 	foodStore := newMockFoodItemStore()
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	// メッセージは任意フィールドのため空でも成功する。
 	resp, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
@@ -619,7 +634,7 @@ func TestCreateFusionRequest_EmptyMessageAllowed(t *testing.T) {
 func TestCreateFusionRequest_ValidationError(t *testing.T) {
 	fusionStore := newMockFusionRequestStore()
 	foodStore := newMockFoodItemStore()
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	// 無効なカテゴリはサービス層で InvalidArgument として弾かれ、リポジトリに到達しない。
 	_, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
@@ -642,7 +657,7 @@ func TestCreateFusionRequest_RepoError(t *testing.T) {
 		return nil, errors.New("firestore unavailable")
 	}
 	foodStore := newMockFoodItemStore()
-	svc := NewFusionService(fusionStore, foodStore)
+	svc := newTestFusionService(fusionStore, foodStore)
 
 	// リポジトリ書き込み失敗時は Internal に変換される。
 	_, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
