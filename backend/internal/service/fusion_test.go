@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/akaitigo/shokudo-nexus/backend/gen/shokudo/v1"
+	"github.com/akaitigo/shokudo-nexus/backend/internal/config"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/domain"
 )
 
@@ -23,7 +24,7 @@ func TestValidateCreateFusionRequest(t *testing.T) {
 		Message:            "にんじんが必要です",
 	}
 
-	if err := validateCreateFusionRequest(validReq); err != nil {
+	if err := validateCreateFusionRequest(validReq, config.Default()); err != nil {
 		t.Errorf("expected nil error for valid request, got: %v", err)
 	}
 
@@ -76,7 +77,7 @@ func TestValidateCreateFusionRequest(t *testing.T) {
 			}
 			tt.modify(req)
 
-			err := validateCreateFusionRequest(req)
+			err := validateCreateFusionRequest(req, config.Default())
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -181,7 +182,7 @@ func TestValidateRespondToFusionRequest(t *testing.T) {
 }
 
 func TestListFusionRequests_PageSizeTooLarge(t *testing.T) {
-	svc := &FusionService{}
+	svc := NewFusionService(newMockFusionRequestStore(), newMockFoodItemStore())
 	_, err := svc.ListFusionRequests(context.Background(), &pb.ListFusionRequestsRequest{PageSize: 101})
 	if err == nil {
 		t.Fatal("expected error for page_size > 100")
@@ -196,7 +197,7 @@ func TestListFusionRequests_PageSizeTooLarge(t *testing.T) {
 }
 
 func TestListFusionRequests_InvalidStatusFilter(t *testing.T) {
-	svc := &FusionService{}
+	svc := NewFusionService(newMockFusionRequestStore(), newMockFoodItemStore())
 	_, err := svc.ListFusionRequests(context.Background(), &pb.ListFusionRequestsRequest{StatusFilter: "invalid"})
 	if err == nil {
 		t.Fatal("expected error for invalid status filter")

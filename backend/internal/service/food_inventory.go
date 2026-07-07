@@ -10,38 +10,34 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/akaitigo/shokudo-nexus/backend/internal/config"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/domain"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/repository"
 
 	pb "github.com/akaitigo/shokudo-nexus/backend/gen/shokudo/v1"
 )
 
-const (
-	defaultPageSize = 20
-	maxPageSize     = 100
-	maxNameLength   = 200
-	minQuantity     = 1
-	maxQuantity     = 10000
-)
-
 // FoodInventoryService はFoodInventoryServiceのgRPC実装。
 type FoodInventoryService struct {
 	pb.UnimplementedFoodInventoryServiceServer
 	repo    repository.FoodItemStore
+	cfg     config.ServiceConfig
 	nowFunc func() time.Time
 }
 
 // NewFoodInventoryService は新しいFoodInventoryServiceを生成する。
+// 調整可能なパラメータは環境変数から読み込む。
 func NewFoodInventoryService(repo repository.FoodItemStore) *FoodInventoryService {
 	return &FoodInventoryService{
 		repo:    repo,
+		cfg:     config.LoadServiceConfig(),
 		nowFunc: func() time.Time { return time.Now().UTC() },
 	}
 }
 
 // CreateFoodItem は余剰食品を登録する。
 func (s *FoodInventoryService) CreateFoodItem(ctx context.Context, req *pb.CreateFoodItemRequest) (*pb.CreateFoodItemResponse, error) {
-	if err := validateCreateFoodItemRequest(req); err != nil {
+	if err := validateCreateFoodItemRequest(req, s.cfg); err != nil {
 		return nil, err
 	}
 
@@ -105,10 +101,10 @@ func (s *FoodInventoryService) GetFoodItem(ctx context.Context, req *pb.GetFoodI
 func (s *FoodInventoryService) ListFoodItems(ctx context.Context, req *pb.ListFoodItemsRequest) (*pb.ListFoodItemsResponse, error) {
 	pageSize := int(req.GetPageSize())
 	if pageSize <= 0 {
-		pageSize = defaultPageSize
+		pageSize = s.cfg.DefaultPageSize
 	}
-	if pageSize > maxPageSize {
-		return nil, status.Errorf(codes.InvalidArgument, "page_size must be between 1 and %d", maxPageSize)
+	if pageSize > s.cfg.MaxPageSize {
+		return nil, status.Errorf(codes.InvalidArgument, "page_size must be between 1 and %d", s.cfg.MaxPageSize)
 	}
 
 	if req.GetCategoryFilter() != "" && !domain.IsValidCategory(req.GetCategoryFilter()) {
@@ -159,12 +155,12 @@ func (s *FoodInventoryService) DeleteFoodItem(ctx context.Context, req *pb.Delet
 	return &pb.DeleteFoodItemResponse{}, nil
 }
 
-func validateCreateFoodItemRequest(req *pb.CreateFoodItemRequest) error {
+func validateCreateFoodItemRequest(req *pb.CreateFoodItemRequest, cfg config.ServiceConfig) error {
 	if req.GetName() == "" {
 		return status.Error(codes.InvalidArgument, "name is required")
 	}
-	if utf8.RuneCountInString(req.GetName()) > maxNameLength {
-		return status.Errorf(codes.InvalidArgument, "name must be at most %d characters", maxNameLength)
+	if utf8.RuneCountInString(req.GetName()) > cfg.MaxNameLength {
+		return status.Errorf(codes.InvalidArgument, "name must be at most %d characters", cfg.MaxNameLength)
 	}
 	if !domain.IsValidCategory(req.GetCategory()) {
 		return status.Errorf(codes.InvalidArgument, "invalid category: %q", req.GetCategory())
@@ -172,8 +168,8 @@ func validateCreateFoodItemRequest(req *pb.CreateFoodItemRequest) error {
 	if req.GetExpiryDate() == "" {
 		return status.Error(codes.InvalidArgument, "expiry_date is required")
 	}
-	if req.GetQuantity() < minQuantity || req.GetQuantity() > maxQuantity {
-		return status.Errorf(codes.InvalidArgument, "quantity must be between %d and %d", minQuantity, maxQuantity)
+	if req.GetQuantity() < cfg.MinQuantity || req.GetQuantity() > cfg.MaxQuantity {
+		return status.Errorf(codes.InvalidArgument, "quantity must be between %d and %d", cfg.MinQuantity, cfg.MaxQuantity)
 	}
 	if !domain.IsValidUnit(req.GetUnit()) {
 		return status.Errorf(codes.InvalidArgument, "invalid unit: %q", req.GetUnit())

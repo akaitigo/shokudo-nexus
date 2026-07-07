@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/akaitigo/shokudo-nexus/backend/internal/config"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/domain"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/repository"
 
@@ -21,22 +22,25 @@ type FusionService struct {
 	pb.UnimplementedFusionServiceServer
 	fusionRepo   repository.FusionRequestStore
 	foodItemRepo repository.FoodItemStore
+	cfg          config.ServiceConfig
 	// approvalMu は承認処理のクリティカルセクションを保護し、
 	// 同一在庫の二重予約を防止する。
 	approvalMu sync.Mutex
 }
 
 // NewFusionService は新しいFusionServiceを生成する。
+// 調整可能なパラメータは環境変数から読み込む。
 func NewFusionService(fusionRepo repository.FusionRequestStore, foodItemRepo repository.FoodItemStore) *FusionService {
 	return &FusionService{
 		fusionRepo:   fusionRepo,
 		foodItemRepo: foodItemRepo,
+		cfg:          config.LoadServiceConfig(),
 	}
 }
 
 // CreateFusionRequest は食材融通リクエストを作成する。
 func (s *FusionService) CreateFusionRequest(ctx context.Context, req *pb.CreateFusionRequestRequest) (*pb.CreateFusionRequestResponse, error) {
-	if err := validateCreateFusionRequest(req); err != nil {
+	if err := validateCreateFusionRequest(req, s.cfg); err != nil {
 		return nil, err
 	}
 
@@ -67,10 +71,10 @@ func (s *FusionService) CreateFusionRequest(ctx context.Context, req *pb.CreateF
 func (s *FusionService) ListFusionRequests(ctx context.Context, req *pb.ListFusionRequestsRequest) (*pb.ListFusionRequestsResponse, error) {
 	pageSize := int(req.GetPageSize())
 	if pageSize <= 0 {
-		pageSize = defaultPageSize
+		pageSize = s.cfg.DefaultPageSize
 	}
-	if pageSize > maxPageSize {
-		return nil, status.Errorf(codes.InvalidArgument, "page_size must be between 1 and %d", maxPageSize)
+	if pageSize > s.cfg.MaxPageSize {
+		return nil, status.Errorf(codes.InvalidArgument, "page_size must be between 1 and %d", s.cfg.MaxPageSize)
 	}
 
 	if req.GetStatusFilter() != "" {
@@ -201,23 +205,21 @@ func (s *FusionService) RespondToFusionRequest(ctx context.Context, req *pb.Resp
 	}, nil
 }
 
-const maxMessageLength = 5000
-
-func validateCreateFusionRequest(req *pb.CreateFusionRequestRequest) error {
+func validateCreateFusionRequest(req *pb.CreateFusionRequestRequest, cfg config.ServiceConfig) error {
 	if req.GetRequesterShokudoId() == "" {
 		return status.Error(codes.InvalidArgument, "requester_shokudo_id is required")
 	}
 	if !domain.IsValidCategory(req.GetDesiredCategory()) {
 		return status.Errorf(codes.InvalidArgument, "invalid desired_category: %q", req.GetDesiredCategory())
 	}
-	if req.GetDesiredQuantity() < minQuantity || req.GetDesiredQuantity() > maxQuantity {
-		return status.Errorf(codes.InvalidArgument, "desired_quantity must be between %d and %d", minQuantity, maxQuantity)
+	if req.GetDesiredQuantity() < cfg.MinQuantity || req.GetDesiredQuantity() > cfg.MaxQuantity {
+		return status.Errorf(codes.InvalidArgument, "desired_quantity must be between %d and %d", cfg.MinQuantity, cfg.MaxQuantity)
 	}
 	if !domain.IsValidUnit(req.GetUnit()) {
 		return status.Errorf(codes.InvalidArgument, "invalid unit: %q", req.GetUnit())
 	}
-	if utf8.RuneCountInString(req.GetMessage()) > maxMessageLength {
-		return status.Errorf(codes.InvalidArgument, "message must be at most %d characters", maxMessageLength)
+	if utf8.RuneCountInString(req.GetMessage()) > cfg.MaxMessageLength {
+		return status.Errorf(codes.InvalidArgument, "message must be at most %d characters", cfg.MaxMessageLength)
 	}
 	return nil
 }

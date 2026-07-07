@@ -302,6 +302,68 @@ func TestFoodItemRepository_List_Pagination(t *testing.T) {
 	}
 }
 
+// TestFoodItemRepository_List_StablePaginationDuringExpiryUpdate は #38 の回帰テスト。
+// created_at が全アイテムで重複する状況で、一覧取得中に期限切れステータス更新を
+// 並行させても、ページトークンがずれず各アイテムがちょうど1回ずつ返ることを検証する。
+func TestFoodItemRepository_List_StablePaginationDuringExpiryUpdate(t *testing.T) {
+	ctx := context.Background()
+	repo := NewFoodItemRepository(newTestClient(t))
+
+	// 全アイテムを同一 created_at で作成し、ソートキーが一意でない状況を再現する。
+	sameTime := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	checkNow := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	pastExpiry := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	const total = 7
+	for i := range total {
+		item := newFoodItem("同時刻アイテム", "野菜", sameTime)
+		// 半数を期限切れ（ExpiryDate を過去）にして更新対象を作る。
+		if i%2 == 0 {
+			item.ExpiryDate = pastExpiry
+		}
+		if _, err := repo.Create(ctx, item); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+	}
+
+	// ページサイズ2で走査しつつ、取得した available かつ期限切れのアイテムを
+	// expired に更新する（ListFoodItems サービスのオンザフライ更新を模倣）。
+	seen := make(map[string]int)
+	pageToken := ""
+	pages := 0
+	for {
+		result, err := repo.List(ctx, ListParams{PageSize: 2, PageToken: pageToken})
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		for _, item := range result.Items {
+			seen[item.ID]++
+			if item.Status == domain.FoodItemStatusAvailable && item.IsExpired(checkNow) {
+				item.Status = domain.FoodItemStatusExpired
+				if updErr := repo.Update(ctx, item); updErr != nil {
+					t.Fatalf("Update failed: %v", updErr)
+				}
+			}
+		}
+		pages++
+		if pages > total+3 {
+			t.Fatal("pagination did not terminate")
+		}
+		if result.NextPageToken == "" {
+			break
+		}
+		pageToken = result.NextPageToken
+	}
+
+	if len(seen) != total {
+		t.Errorf("expected %d unique items, got %d", total, len(seen))
+	}
+	for id, count := range seen {
+		if count != 1 {
+			t.Errorf("item %q returned %d times across pages, want exactly 1", id, count)
+		}
+	}
+}
+
 func TestFoodItemRepository_List_InvalidPageToken(t *testing.T) {
 	ctx := context.Background()
 	repo := NewFoodItemRepository(newTestClient(t))
