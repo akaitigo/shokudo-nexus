@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	pb "github.com/akaitigo/shokudo-nexus/backend/gen/shokudo/v1"
+	"github.com/akaitigo/shokudo-nexus/backend/internal/config"
 )
 
 func TestValidateCreateFoodItemRequest(t *testing.T) {
@@ -22,7 +23,7 @@ func TestValidateCreateFoodItemRequest(t *testing.T) {
 	}
 
 	// 正常系
-	if err := validateCreateFoodItemRequest(validReq); err != nil {
+	if err := validateCreateFoodItemRequest(validReq, config.Default()); err != nil {
 		t.Errorf("expected nil error for valid request, got: %v", err)
 	}
 
@@ -83,7 +84,7 @@ func TestValidateCreateFoodItemRequest(t *testing.T) {
 			req := cloneCreateFoodItemRequest(validReq)
 			tt.modify(req)
 
-			err := validateCreateFoodItemRequest(req)
+			err := validateCreateFoodItemRequest(req, config.Default())
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -110,13 +111,13 @@ func TestValidateCreateFoodItemRequest_NameExact200Chars(t *testing.T) {
 		Quantity:   1,
 		Unit:       "kg",
 	}
-	if err := validateCreateFoodItemRequest(req); err != nil {
+	if err := validateCreateFoodItemRequest(req, config.Default()); err != nil {
 		t.Errorf("expected nil error for 200-char name, got: %v", err)
 	}
 }
 
 func TestGetFoodItem_EmptyID(t *testing.T) {
-	svc := &FoodInventoryService{}
+	svc := NewFoodInventoryService(newMockFoodItemStore())
 	_, err := svc.GetFoodItem(context.Background(), &pb.GetFoodItemRequest{Id: ""})
 	if err == nil {
 		t.Fatal("expected error for empty ID")
@@ -131,7 +132,7 @@ func TestGetFoodItem_EmptyID(t *testing.T) {
 }
 
 func TestDeleteFoodItem_EmptyID(t *testing.T) {
-	svc := &FoodInventoryService{}
+	svc := NewFoodInventoryService(newMockFoodItemStore())
 	_, err := svc.DeleteFoodItem(context.Background(), &pb.DeleteFoodItemRequest{Id: ""})
 	if err == nil {
 		t.Fatal("expected error for empty ID")
@@ -146,7 +147,7 @@ func TestDeleteFoodItem_EmptyID(t *testing.T) {
 }
 
 func TestListFoodItems_PageSizeTooLarge(t *testing.T) {
-	svc := &FoodInventoryService{}
+	svc := NewFoodInventoryService(newMockFoodItemStore())
 	_, err := svc.ListFoodItems(context.Background(), &pb.ListFoodItemsRequest{PageSize: 101})
 	if err == nil {
 		t.Fatal("expected error for page_size > 100")
@@ -161,7 +162,7 @@ func TestListFoodItems_PageSizeTooLarge(t *testing.T) {
 }
 
 func TestListFoodItems_InvalidCategoryFilter(t *testing.T) {
-	svc := &FoodInventoryService{}
+	svc := NewFoodInventoryService(newMockFoodItemStore())
 	_, err := svc.ListFoodItems(context.Background(), &pb.ListFoodItemsRequest{CategoryFilter: "invalid"})
 	if err == nil {
 		t.Fatal("expected error for invalid category filter")
@@ -183,5 +184,58 @@ func cloneCreateFoodItemRequest(r *pb.CreateFoodItemRequest) *pb.CreateFoodItemR
 		Quantity:   r.Quantity,
 		Unit:       r.Unit,
 		DonorId:    r.DonorId,
+	}
+}
+
+// --- 環境変数による調整パラメータの反映 (#34) ---
+
+func TestListFoodItems_RespectsConfiguredMaxPageSize(t *testing.T) {
+	t.Setenv("SHOKUDO_MAX_PAGE_SIZE", "5")
+	// コンストラクタが環境変数から設定を読み込む。
+	svc := NewFoodInventoryService(newMockFoodItemStore())
+
+	// 上限（5）を超える値は拒否される。
+	_, err := svc.ListFoodItems(context.Background(), &pb.ListFoodItemsRequest{PageSize: 6})
+	if err == nil {
+		t.Fatal("expected error for page_size above configured max, got nil")
+	}
+	if status.Code(err) != codes.InvalidArgument {
+		t.Errorf("expected InvalidArgument, got %v", status.Code(err))
+	}
+
+	// 上限ちょうどは許容される。
+	if _, err := svc.ListFoodItems(context.Background(), &pb.ListFoodItemsRequest{PageSize: 5}); err != nil {
+		t.Errorf("expected page_size at configured max to be accepted, got: %v", err)
+	}
+}
+
+func TestCreateFoodItem_RespectsConfiguredMaxQuantity(t *testing.T) {
+	t.Setenv("SHOKUDO_MAX_QUANTITY", "50")
+	svc := NewFoodInventoryService(newMockFoodItemStore())
+
+	// 設定した上限（50）を超える数量は拒否される。
+	_, err := svc.CreateFoodItem(context.Background(), &pb.CreateFoodItemRequest{
+		Name:       "テスト",
+		Category:   "野菜",
+		ExpiryDate: "2026-04-15T00:00:00Z",
+		Quantity:   51,
+		Unit:       "kg",
+	})
+	if err == nil {
+		t.Fatal("expected error for quantity above configured max, got nil")
+	}
+	if status.Code(err) != codes.InvalidArgument {
+		t.Errorf("expected InvalidArgument, got %v", status.Code(err))
+	}
+
+	// 上限以内は成功する。
+	if _, err := svc.CreateFoodItem(context.Background(), &pb.CreateFoodItemRequest{
+		Name:       "テスト",
+		Category:   "野菜",
+		ExpiryDate: "2026-04-15T00:00:00Z",
+		Quantity:   50,
+		Unit:       "kg",
+	}); err != nil {
+		t.Errorf("expected quantity within configured max to succeed, got: %v", err)
 	}
 }

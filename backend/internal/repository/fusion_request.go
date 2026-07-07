@@ -83,7 +83,9 @@ func (r *FusionRequestRepository) List(ctx context.Context, params FusionListPar
 		return nil, fmt.Errorf("failed to count fusion requests: %w", err)
 	}
 
-	q = q.OrderBy("created_at", firestore.Desc)
+	// created_at は重複しうるため、ドキュメントID (__name__) を第2ソートキーとして
+	// 明示的に付与し全順序を保証する。カーソルページネーションを安定させ、重複・欠落を防ぐ。
+	q = q.OrderBy("created_at", firestore.Desc).OrderBy(firestore.DocumentID, firestore.Desc)
 
 	if params.PageToken != "" {
 		tokenDoc, err := col.Doc(params.PageToken).Get(ctx)

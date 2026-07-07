@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/akaitigo/shokudo-nexus/backend/internal/config"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/domain"
 	"github.com/akaitigo/shokudo-nexus/backend/internal/repository"
 
@@ -412,9 +413,10 @@ func TestListFoodItems_Success(t *testing.T) {
 
 func TestListFoodItems_DefaultPageSize(t *testing.T) {
 	mock := newMockFoodItemStore()
+	wantDefaultPageSize := config.Default().DefaultPageSize
 	mock.listFunc = func(_ context.Context, params repository.ListParams) (*repository.ListResult, error) {
-		if params.PageSize != defaultPageSize {
-			t.Errorf("expected default page size %d, got %d", defaultPageSize, params.PageSize)
+		if params.PageSize != wantDefaultPageSize {
+			t.Errorf("expected default page size %d, got %d", wantDefaultPageSize, params.PageSize)
 		}
 		return &repository.ListResult{Items: nil, TotalCount: 0}, nil
 	}

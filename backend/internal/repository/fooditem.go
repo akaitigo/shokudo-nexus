@@ -90,7 +90,12 @@ func (r *FoodItemRepository) List(ctx context.Context, params ListParams) (*List
 			Where("status", "in", activeStatuses)
 	}
 
-	q = q.OrderBy("created_at", firestore.Desc)
+	// created_at は複数ドキュメントで重複しうるため、ドキュメントID (__name__)
+	// を第2ソートキーとして明示的に付与し全順序を保証する。これによりカーソル
+	// ページネーションが安定し、一覧取得中にステータス更新（期限切れ反映）が
+	// 並行してもページトークンがずれず、重複・欠落が発生しない。
+	// created_at と __name__ はステータス更新で変化しない不変キーである。
+	q = q.OrderBy("created_at", firestore.Desc).OrderBy(firestore.DocumentID, firestore.Desc)
 
 	// ページトークンによるオフセット
 	if params.PageToken != "" {
