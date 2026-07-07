@@ -38,16 +38,13 @@ jobs:
       - name: Lint
         run: golangci-lint run ./...
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
       - name: Start Firestore emulator
         run: |
-          gcloud components install beta cloud-firestore-emulator --quiet
-          nohup gcloud emulators firestore start --host-port=127.0.0.1:8080 \
-            > "${RUNNER_TEMP}/firestore-emulator.log" 2>&1 &
+          docker run -d --name firestore-emulator -p 8080:8080 \
+            gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
+            gcloud emulators firestore start --host-port=0.0.0.0:8080
           echo "Waiting for the Firestore emulator to become ready..."
-          timeout 120 bash -c 'until curl -s http://127.0.0.1:8080/ > /dev/null 2>&1; do sleep 1; done'
+          timeout 120 bash -c 'until curl -s http://127.0.0.1:8080/ > /dev/null 2>&1; do sleep 2; done'
           echo "Firestore emulator is ready."
 
       - name: Test
