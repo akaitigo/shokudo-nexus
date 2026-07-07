@@ -69,6 +69,18 @@ buf generate
 make check
 ```
 
+### Firestore インデックス
+
+一覧クエリ（ステータス/カテゴリでの絞り込み + `created_at` 降順ソート）に必要な複合インデックスは
+`firestore.indexes.json` にコード管理している。環境（本番/ステージング）構築時に Firebase CLI で
+デプロイする。
+
+```bash
+firebase deploy --only firestore:indexes --project your-gcp-project-id
+```
+
+> ローカルの Firestore エミュレータはインデックスを必要としないため、開発時のデプロイは不要。
+
 ## 環境変数
 
 バックエンド (`backend/.env.example`) とフロントエンド (`frontend/.env.example`) の両方を参照してください。
