@@ -38,7 +38,20 @@ jobs:
       - name: Lint
         run: golangci-lint run ./...
 
+      - name: Start Firestore emulator
+        run: |
+          docker run -d --name firestore-emulator -p 8080:8080 \
+            gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators \
+            gcloud emulators firestore start --host-port=0.0.0.0:8080
+          echo "Waiting for the Firestore emulator to become ready..."
+          timeout 120 bash -c 'until curl -s http://127.0.0.1:8080/ > /dev/null 2>&1; do sleep 2; done'
+          echo "Firestore emulator is ready."
+
       - name: Test
+        env:
+          # リポジトリ層の統合テストはこのエミュレータに接続する。
+          # 未設定の環境ではテストは自動的にスキップされる。
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
         run: go test -v -race -count=1 -coverprofile=coverage.out ./...
 
       - name: Build

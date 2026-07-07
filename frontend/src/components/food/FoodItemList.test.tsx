@@ -124,4 +124,52 @@ describe("FoodItemList", () => {
 			expect(badges.length).toBeGreaterThan(0);
 		});
 	});
+
+	it("削除確認でOKするとAPIが呼ばれアイテムが一覧から消える", async () => {
+		const user = userEvent.setup();
+		const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+		const client = createMockClient();
+		renderList(client);
+
+		await waitFor(() => {
+			expect(screen.getByText("にんじん")).toBeInTheDocument();
+		});
+
+		const deleteButton = screen.getAllByRole("button", { name: "削除" })[0];
+		if (!deleteButton) {
+			throw new Error("削除ボタンが見つかりません");
+		}
+		await user.click(deleteButton);
+
+		await waitFor(() => {
+			expect(client.deleteFoodItem).toHaveBeenCalledWith("food-0001");
+		});
+		await waitFor(() => {
+			expect(screen.queryByText("にんじん")).not.toBeInTheDocument();
+		});
+
+		confirmSpy.mockRestore();
+	});
+
+	it("削除確認でキャンセルするとAPIが呼ばれない", async () => {
+		const user = userEvent.setup();
+		const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+		const client = createMockClient();
+		renderList(client);
+
+		await waitFor(() => {
+			expect(screen.getByText("にんじん")).toBeInTheDocument();
+		});
+
+		const deleteButton = screen.getAllByRole("button", { name: "削除" })[0];
+		if (!deleteButton) {
+			throw new Error("削除ボタンが見つかりません");
+		}
+		await user.click(deleteButton);
+
+		expect(client.deleteFoodItem).not.toHaveBeenCalled();
+		expect(screen.getByText("にんじん")).toBeInTheDocument();
+
+		confirmSpy.mockRestore();
+	});
 });

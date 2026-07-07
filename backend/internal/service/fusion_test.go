@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -531,5 +532,128 @@ func TestRespondToFusionRequest_FusionUpdateFailRollbacksFoodItem(t *testing.T) 
 	if item.Status != domain.FoodItemStatusAvailable {
 		t.Errorf("expected food item rolled back to %q, got %q",
 			domain.FoodItemStatusAvailable, item.Status)
+	}
+}
+
+func TestCreateFusionRequest_Success(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	foodStore := newMockFoodItemStore()
+	svc := NewFusionService(fusionStore, foodStore)
+
+	resp, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
+		RequesterShokudoId: "shokudo-1",
+		DesiredCategory:    "野菜",
+		DesiredQuantity:    5,
+		Unit:               "kg",
+		Message:            "にんじんが必要です",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	got := resp.GetFusionRequest()
+	if got.GetId() == "" {
+		t.Error("expected non-empty ID")
+	}
+	if got.GetRequesterShokudoId() != "shokudo-1" {
+		t.Errorf("expected requester_shokudo_id 'shokudo-1', got %q", got.GetRequesterShokudoId())
+	}
+	if got.GetDesiredCategory() != "野菜" {
+		t.Errorf("expected desired_category '野菜', got %q", got.GetDesiredCategory())
+	}
+	if got.GetDesiredQuantity() != 5 {
+		t.Errorf("expected desired_quantity 5, got %d", got.GetDesiredQuantity())
+	}
+	if got.GetUnit() != "kg" {
+		t.Errorf("expected unit 'kg', got %q", got.GetUnit())
+	}
+	if got.GetMessage() != "にんじんが必要です" {
+		t.Errorf("expected message 'にんじんが必要です', got %q", got.GetMessage())
+	}
+	// 新規作成時のステータスは pending。
+	if got.GetStatus() != "pending" {
+		t.Errorf("expected status 'pending', got %q", got.GetStatus())
+	}
+	if got.GetCreatedAt() == "" {
+		t.Error("expected non-empty created_at")
+	}
+	if got.GetUpdatedAt() == "" {
+		t.Error("expected non-empty updated_at")
+	}
+
+	// リポジトリ層まで到達し永続化されていることを確認する。
+	stored, err := fusionStore.Get(context.Background(), got.GetId())
+	if err != nil {
+		t.Fatalf("expected request to be stored, got error: %v", err)
+	}
+	if stored.Status != domain.FusionRequestStatusPending {
+		t.Errorf("expected stored status %q, got %q", domain.FusionRequestStatusPending, stored.Status)
+	}
+	if stored.RequesterShokudoID != "shokudo-1" {
+		t.Errorf("expected stored requester 'shokudo-1', got %q", stored.RequesterShokudoID)
+	}
+}
+
+func TestCreateFusionRequest_EmptyMessageAllowed(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	foodStore := newMockFoodItemStore()
+	svc := NewFusionService(fusionStore, foodStore)
+
+	// メッセージは任意フィールドのため空でも成功する。
+	resp, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
+		RequesterShokudoId: "shokudo-1",
+		DesiredCategory:    "肉",
+		DesiredQuantity:    2,
+		Unit:               "パック",
+		Message:            "",
+	})
+	if err != nil {
+		t.Fatalf("expected no error for empty message, got: %v", err)
+	}
+	if resp.GetFusionRequest().GetMessage() != "" {
+		t.Errorf("expected empty message, got %q", resp.GetFusionRequest().GetMessage())
+	}
+}
+
+func TestCreateFusionRequest_ValidationError(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	foodStore := newMockFoodItemStore()
+	svc := NewFusionService(fusionStore, foodStore)
+
+	// 無効なカテゴリはサービス層で InvalidArgument として弾かれ、リポジトリに到達しない。
+	_, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
+		RequesterShokudoId: "shokudo-1",
+		DesiredCategory:    "invalid",
+		DesiredQuantity:    5,
+		Unit:               "kg",
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid category, got nil")
+	}
+	if status.Code(err) != codes.InvalidArgument {
+		t.Errorf("expected InvalidArgument, got %v", status.Code(err))
+	}
+}
+
+func TestCreateFusionRequest_RepoError(t *testing.T) {
+	fusionStore := newMockFusionRequestStore()
+	fusionStore.createFunc = func(_ context.Context, _ *domain.FusionRequest) (*domain.FusionRequest, error) {
+		return nil, errors.New("firestore unavailable")
+	}
+	foodStore := newMockFoodItemStore()
+	svc := NewFusionService(fusionStore, foodStore)
+
+	// リポジトリ書き込み失敗時は Internal に変換される。
+	_, err := svc.CreateFusionRequest(context.Background(), &pb.CreateFusionRequestRequest{
+		RequesterShokudoId: "shokudo-1",
+		DesiredCategory:    "野菜",
+		DesiredQuantity:    5,
+		Unit:               "kg",
+	})
+	if err == nil {
+		t.Fatal("expected error when repo fails, got nil")
+	}
+	if status.Code(err) != codes.Internal {
+		t.Errorf("expected Internal, got %v", status.Code(err))
 	}
 }
