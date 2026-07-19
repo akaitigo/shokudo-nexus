@@ -38,7 +38,7 @@
 		"@bufbuild/protobuf": "^2.12.1",
 		"@connectrpc/connect": "^2.1.2",
 		"@connectrpc/connect-web": "^2.1.2",
-		"firebase": "^12.12.1",
+		"firebase": "^12.16.0",
 		"react": "^19.2.6",
 		"react-dom": "^19.2.7",
 		"react-router-dom": "^7.14.0"
