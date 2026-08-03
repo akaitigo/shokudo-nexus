@@ -22,7 +22,7 @@
 		"@testing-library/react": "^16.3.2",
 		"@testing-library/user-event": "^14.6.1",
 		"@types/react": "^19.2.14",
-		"@types/react-dom": "^19.2.3",
+		"@types/react-dom": "^19.2.4",
 		"@vitejs/plugin-react": "^6.0.0",
 		"@vitest/coverage-v8": "^4.1.10",
 		"jsdom": "^29.1.1",
@@ -40,7 +40,7 @@
 		"@connectrpc/connect-web": "^2.1.2",
 		"firebase": "^12.16.0",
 		"react": "^19.2.6",
-		"react-dom": "^19.2.7",
+		"react-dom": "^19.2.8",
 		"react-router-dom": "^7.14.0"
 	}
 }
