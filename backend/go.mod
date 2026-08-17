@@ -3,7 +3,7 @@ module github.com/akaitigo/shokudo-nexus/backend
 go 1.25.8
 
 require (
-	cloud.google.com/go/firestore v1.24.0
+	cloud.google.com/go/firestore v1.25.0
 	firebase.google.com/go/v4 v4.21.0
 	github.com/google/uuid v1.6.0
 	google.golang.org/api v0.293.0
