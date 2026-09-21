@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.25.0
 	firebase.google.com/go/v4 v4.21.0
 	github.com/google/uuid v1.6.0
-	google.golang.org/api v0.294.0
+	google.golang.org/api v0.298.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 )
